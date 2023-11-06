@@ -1,1 +1,4 @@
 GitPython
+numpy
+open3d
+
