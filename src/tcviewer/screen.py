@@ -8,30 +8,15 @@ from tcviewer import materials
 
 
 
-
 class Screen:
     def __init__(self, **kwargs):
-        self.screenshot_file = kwargs.get('screenshot_file')
         self.meshes = []
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args, **kwargs):
-        if self.screenshot_file is None:
-            o3d.visualization.draw(self.meshes, show_skybox=False, title='TCViewer')
-            return
-
-        vis = o3d.visualization.Visualizer()
-        vis.create_window()
-        [vis.add_geometry(mesh) for mesh in self.meshes]
-        # vis.update_geometry()
-        # vis.update_renderer()
-        vis.capture_screen_image(self.screenshot_file, True)
-        vis.destroy_window()
-
-
-
+        o3d.visualization.draw(self.meshes, show_skybox=False, title='TCViewer')
 
     def add_mesh(self, geometry, name=None, material=None):
         self.meshes.append(dict(geometry=geometry, name=name or str(id(geometry)), material=material))
@@ -160,7 +145,7 @@ if __name__ == '__main__':
 
     for mo_index in range(len(energies)):
         mo = MolecularOrbital(aos, coefficients[:, mo_index], mol)
-        with Screen(screenshot_file='test.png') as scr:
+        with Screen() as scr:
             scr.draw_molecule(mol)
             scr.draw_orbital(mo)
             scr.draw_axes()
