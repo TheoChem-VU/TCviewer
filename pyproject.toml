@@ -1,8 +1,8 @@
 [project]
-name = "template"
+name = "TCviewer"
 authors = [
-  { name="Test Person", email="test.person@email.com"}]
-description = "template"
+  { name="Yuman Hordijk", email="yumanhordijk@gmail.com"}]
+description = "Molecular and Surface drawing program."
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
