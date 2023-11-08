@@ -1,10 +1,11 @@
 import open3d as o3d
-from yutility import atom_data, geometry
+from yutility import atom_data
 from scm import plams
 import numpy as np
 from tcintegral import grid
 import skimage
 from tcviewer import materials
+from TCutility import geometry
 
 
 
@@ -47,31 +48,35 @@ class Screen:
 
             self.add_mesh(cylinder, material=kwargs.get('bond_material'))
 
-    def draw_isosurface(self, gridd, thresh=0, color=None, material=None):
-        val = gridd.values
-        s = gridd.shape
-        val = val.reshape(*s)
-        verts, faces, normals, values = skimage.measure.marching_cubes(val, thresh, spacing=gridd.spacing*3, method='lorensen')
-        verts = o3d.cpu.pybind.utility.Vector3dVector(verts + gridd.origin)
-        triangles = o3d.cpu.pybind.utility.Vector3iVector(faces)
+    def draw_isosurface(self, gridd, isovalue=0, color=None, material=None, with_phase=True):
+        print(gridd.values.min(), isovalue, gridd.values.max(), with_phase)
+        val = gridd.values.reshape(*gridd.shape)
+        print(gridd.values.min(), isovalue, gridd.values.max(), with_phase)
+        if val.min() < isovalue < val.max():
+            verts, faces, normals, values = skimage.measure.marching_cubes(val, isovalue, spacing=gridd.spacing*3, method='lorensen')
+            verts = o3d.cpu.pybind.utility.Vector3dVector(verts + gridd.origin)
+            triangles = o3d.cpu.pybind.utility.Vector3iVector(faces)
 
-        mesh = o3d.geometry.TriangleMesh(verts, triangles)
-        if color:
-            mesh.paint_uniform_color(color)
+            mesh = o3d.geometry.TriangleMesh(verts, triangles)
+            if color is not None:
+                mesh.paint_uniform_color(np.atleast_2d(color)[-1])
 
-        mesh.compute_vertex_normals()
-        self.add_mesh(mesh, material=material)
+            mesh.compute_vertex_normals()
+            self.add_mesh(mesh, material=material)
+
+        if with_phase:
+            self.draw_isosurface(gridd, isovalue=-isovalue, color=np.atleast_2d(color)[1], material=material, with_phase=False)
 
     def draw_orbital(self, orb, gridd=None, isovalue=0.03, color1=[1, 0, 0], color2=[0, 0, 1], material=materials.orbital_shiny):
+        # define a default grid if one is not given
         if gridd is None:
-            gridd = grid.molecule_bounding_box(orb.molecule, spacing=.1)
+            gridd = grid.molecule_bounding_box(orb.molecule, spacing=.1, margin=4)
 
+        # evaluate the orbital on this grid
         gridd.values = orb(gridd.points)
-        if gridd.values.min() < isovalue < gridd.values.max():
-            self.draw_isosurface(gridd, isovalue, color=color1, material=material)
-        gridd.values = orb(gridd.points)
-        if gridd.values.min() < -isovalue < gridd.values.max():
-            self.draw_isosurface(gridd, -isovalue, color=color2, material=material)
+        
+        # and draw the isosurface with phase
+        self.draw_isosurface(gridd, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
 
     def draw_axes(self, center=[0, 0, 0], length=1, width=.04, **kwargs):
         arrow_x = o3d.geometry.TriangleMesh.create_arrow(width, width*2, cylinder_height=length, cone_height=length*.2, **kwargs)
@@ -100,7 +105,7 @@ if __name__ == '__main__':
     bs = basis_set.STO2G
 
     # read a molecule to use
-    mol = plams.Molecule('/Users/yumanhordijk/Desktop/benzene.xyz')
+    mol = plams.Molecule('/Users/yumanhordijk/Desktop/4ring.xyz')
     mol.guess_bonds()
 
     # get atomic orbitals for this molecule
@@ -143,9 +148,13 @@ if __name__ == '__main__':
     # get MO energies and coeffs
     energies, coefficients = np.linalg.eigh(H)
 
+    # we are now going to draw each MO
     for mo_index in range(len(energies)):
+        # construct the MO using our AOs and coefficients
         mo = MolecularOrbital(aos, coefficients[:, mo_index], mol)
+
+        # create a new screen
         with Screen() as scr:
             scr.draw_molecule(mol)
-            scr.draw_orbital(mo)
+            scr.draw_orbital(mo, material=materials.orbital_shiny)
             scr.draw_axes()
