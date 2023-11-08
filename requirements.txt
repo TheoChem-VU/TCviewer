@@ -1,4 +1,6 @@
 GitPython
 numpy
 open3d
-
+scikit-image
+plams
+TCutility
