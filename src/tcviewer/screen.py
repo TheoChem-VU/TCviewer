@@ -49,34 +49,39 @@ class Screen:
             self.add_mesh(cylinder, material=kwargs.get('bond_material'))
 
     def draw_isosurface(self, gridd, isovalue=0, color=None, material=None, with_phase=True):
-        print(gridd.values.min(), isovalue, gridd.values.max(), with_phase)
         val = gridd.values.reshape(*gridd.shape)
-        print(gridd.values.min(), isovalue, gridd.values.max(), with_phase)
+        if isovalue == 0:
+            with_phase = False
         if val.min() < isovalue < val.max():
-            verts, faces, normals, values = skimage.measure.marching_cubes(val, isovalue, spacing=gridd.spacing*3, method='lorensen')
+            spacing = gridd.spacing if len(gridd.spacing) == 3 else gridd.spacing * 3
+            verts, faces, normals, values = skimage.measure.marching_cubes(val, isovalue, spacing=spacing, method='lorensen')
             verts = o3d.cpu.pybind.utility.Vector3dVector(verts + gridd.origin)
             triangles = o3d.cpu.pybind.utility.Vector3iVector(faces)
 
             mesh = o3d.geometry.TriangleMesh(verts, triangles)
             if color is not None:
-                mesh.paint_uniform_color(np.atleast_2d(color)[-1])
+                mesh.paint_uniform_color(np.atleast_2d(color)[0])
 
             mesh.compute_vertex_normals()
             self.add_mesh(mesh, material=material)
 
         if with_phase:
-            self.draw_isosurface(gridd, isovalue=-isovalue, color=np.atleast_2d(color)[1], material=material, with_phase=False)
+            self.draw_isosurface(gridd, isovalue=-isovalue, color=np.atleast_2d(color)[-1], material=material, with_phase=False)
 
-    def draw_orbital(self, orb, gridd=None, isovalue=0.03, color1=[1, 0, 0], color2=[0, 0, 1], material=materials.orbital_shiny):
+    def draw_orbital(self, orb, gridd=None, isovalue=0.03, color1=[0, 0, 1], color2=[1, 0, 0], material=materials.orbital_shiny):
         # define a default grid if one is not given
         if gridd is None:
             gridd = grid.molecule_bounding_box(orb.molecule, spacing=.1, margin=4)
 
         # evaluate the orbital on this grid
         gridd.values = orb(gridd.points)
-        
+
         # and draw the isosurface with phase
         self.draw_isosurface(gridd, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
+
+    def draw_cub(self, cub, isovalue=0.03, color1=[0, 0, 1], color2=[1, 0, 0], material=materials.orbital_shiny):
+        self.draw_molecule(cub.get_molecule())
+        self.draw_isosurface(cub.to_grid(), isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
 
     def draw_axes(self, center=[0, 0, 0], length=1, width=.04, **kwargs):
         arrow_x = o3d.geometry.TriangleMesh.create_arrow(width, width*2, cylinder_height=length, cone_height=length*.2, **kwargs)
@@ -105,11 +110,11 @@ if __name__ == '__main__':
     bs = basis_set.STO2G
 
     # read a molecule to use
-    mol = plams.Molecule('/Users/yumanhordijk/Desktop/4ring.xyz')
+    mol = plams.Molecule('/Users/yumanhordijk/Desktop/acrolein.xyz')
     mol.guess_bonds()
 
     # get atomic orbitals for this molecule
-    # orb_to_get = ['1S', '2S', '3S', '1P:x', '1P:y', '1P:z', '2P:x', '2P:y', '2P:z']  # list of possible AO
+    orb_to_get = ['1S', '2S', '3S', '1P:x', '1P:y', '1P:z']  # list of possible AO
     orb_to_get = ['1P:z']  # list of possible AOs
     aos = []
     for atom in mol:
