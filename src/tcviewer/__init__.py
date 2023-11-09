@@ -1,1 +1,1 @@
-from screen import Screen  # noqa
+from tcviewer.screen import Screen  # noqa
