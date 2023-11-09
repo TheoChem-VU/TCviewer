@@ -1,4 +1,6 @@
 from tcintegral import basis_set, MolecularOrbital
+from scm import plams
+
 
 # get a basis set from basis_sets
 bs = basis_set.STO2G
