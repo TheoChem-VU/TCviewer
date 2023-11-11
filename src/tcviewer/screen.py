@@ -90,9 +90,11 @@ class Screen:
         # and draw the isosurface with phase
         self.draw_isosurface(gridd, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
 
-    def draw_cub(self, cub, isovalue=0.03, color1=[0, 0, 1], color2=[1, 0, 0], material=materials.orbital_shiny):
-        self.draw_molecule(cub.get_molecule())
-        self.draw_isosurface(cub.to_grid(), isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
+    def draw_cub(self, cub: grid.Grid or str, isovalue=0.03, color1=[0, 0, 1], color2=[1, 0, 0], material=materials.orbital_shiny):
+        if isinstance(cub, str):
+            cub = grid.from_cub_file(cub)
+        self.draw_molecule(cub.molecule)
+        self.draw_isosurface(cub, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
 
     def draw_axes(self, center=[0, 0, 0], length=1, width=.04, **kwargs):
         arrow_x = o3d.geometry.TriangleMesh.create_arrow(width, width*2, cylinder_height=length, cone_height=length*.2, **kwargs)
