@@ -6,6 +6,8 @@ from tcintegral import grid
 import skimage
 from tcviewer import materials
 from TCutility import geometry
+import networkx as nx
+import itertools 
 
 
 
@@ -54,16 +56,25 @@ class Screen:
             with_phase = False
         if val.min() < isovalue < val.max():
             spacing = gridd.spacing if len(gridd.spacing) == 3 else gridd.spacing * 3
-            verts, faces, normals, values = skimage.measure.marching_cubes(val, isovalue, spacing=spacing, method='lorensen')
-            verts = o3d.cpu.pybind.utility.Vector3dVector(verts + gridd.origin)
-            triangles = o3d.cpu.pybind.utility.Vector3iVector(faces)
+            verts, faces, normals, values = skimage.measure.marching_cubes(val, isovalue, spacing=spacing)
+            
+            edges = []
+            for face in faces:
+                edges.extend(list(itertools.combinations(face, 2)))
+            g = nx.from_edgelist(edges)
 
-            mesh = o3d.geometry.TriangleMesh(verts, triangles)
-            if color is not None:
-                mesh.paint_uniform_color(np.atleast_2d(color)[0])
+            # compute connected components and print results
+            components = list(nx.algorithms.components.connected_components(g))
+            # separate faces by component
+            for im, component in enumerate(components):
+                triangles = o3d.cpu.pybind.utility.Vector3iVector([face for face in faces if set(face) <= component])  # <= operator tests for subset relation
+                verts_ = o3d.cpu.pybind.utility.Vector3dVector(verts + gridd.origin)
+                mesh = o3d.geometry.TriangleMesh(verts_, triangles)
+                if color is not None:
+                    mesh.paint_uniform_color(np.atleast_2d(color)[0])
 
-            mesh.compute_vertex_normals()
-            self.add_mesh(mesh, material=material)
+                mesh.compute_vertex_normals()
+                self.add_mesh(mesh, material=material)
 
         if with_phase:
             self.draw_isosurface(gridd, isovalue=-isovalue, color=np.atleast_2d(color)[-1], material=material, with_phase=False)
@@ -161,5 +172,7 @@ if __name__ == '__main__':
         # create a new screen
         with Screen() as scr:
             scr.draw_molecule(mol)
-            scr.draw_orbital(mo, material=materials.orbital_shiny)
+            mat = materials.orbital_shiny
+            # mat.base_color = [1, 1, 1, .5]
+            scr.draw_orbital(mo, material=mat)
             scr.draw_axes()
