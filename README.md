@@ -24,6 +24,19 @@ To get new updates, simply run:
 ```
 git pull
 ```
+## Usage <a name=usage></a>
+TCviewer exports the `Screen` object which can be used to quickly build a scene. All the heavy work, such as setting up the camera, building and coloring meshes, will be done in the background. Please see the examples section for some simple example scripts for you to try out.
 
 ## Examples <a name=examples></a>
-[insert example outputs]
+To draw a molecule, simply run:
+
+```python
+from tcviewer import Screen
+from scm import plams
+
+molecule = 'path/to/molecule.xyz'  # molecules can be given as paths to xyz files
+molecule = plams.Molecule('path/to/molecule.xyz')  # or as plams.Molecule objects
+molecule.guess_bonds()
+with Screen() as scr:
+  scr.draw_molecule(molecule)
+```
