@@ -5,7 +5,7 @@ import numpy as np
 from tcintegral import grid
 import skimage
 from tcviewer import materials
-from TCutility import geometry
+from tcutility import geometry, log
 
 
 
@@ -17,7 +17,7 @@ class Screen:
         return self
 
     def __exit__(self, *args, **kwargs):
-        o3d.visualization.draw(self.meshes, show_skybox=False, title='TCViewer')
+        o3d.visualization.draw(self.meshes, show_skybox=False, title='TCViewer', show_ui=False)
 
     def add_mesh(self, geometry, name=None, material=None):
         self.meshes.append(dict(geometry=geometry, name=name or str(id(geometry)), material=material))
@@ -75,6 +75,11 @@ class Screen:
 
         # evaluate the orbital on this grid
         gridd.values = orb(gridd.points)
+        print(gridd.values.min(), gridd.values.max())
+        print((gridd.values**2).sum())
+        # print(((gridd.values * orb.norm**2 / gridd.spacing[0]**2)**2).sum())
+        # gridd.values
+
 
         # and draw the isosurface with phase
         self.draw_isosurface(gridd, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
@@ -178,6 +183,7 @@ class Screen2:
         # evaluate the orbital on this grid
         gridd.values = orb(gridd.points)
 
+
         # and draw the isosurface with phase
         self.draw_isosurface(gridd, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
 
@@ -261,9 +267,8 @@ if __name__ == '__main__':
     for mo_index in range(len(energies)):
         # construct the MO using our AOs and coefficients
         mo = MolecularOrbital(aos, coefficients[:, mo_index], mol)
-
         # create a new screen
-        with Screen2() as scr:
+        with Screen() as scr:
             scr.draw_molecule(mol)
-            scr.draw_orbital(mo, material=materials.orbital_shiny)
+            scr.draw_orbital(mo, material=materials.orbital_shiny, isovalue=.03)
             scr.draw_axes()
