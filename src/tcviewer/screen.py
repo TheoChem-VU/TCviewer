@@ -73,11 +73,6 @@ class Screen:
 
         # evaluate the orbital on this grid
         gridd.values = orb(gridd.points)
-        print(gridd.values.min(), gridd.values.max())
-        print((gridd.values**2).sum())
-        # print(((gridd.values * orb.norm**2 / gridd.spacing[0]**2)**2).sum())
-        # gridd.values
-
 
         # and draw the isosurface with phase
         self.draw_isosurface(gridd, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
@@ -132,9 +127,9 @@ class Screen2:
             mol.guess_bonds()
 
         for atom in mol:
-            sphere = o3d.geometry.TriangleMesh.create_sphere(atom_data.radius(atom.symbol)*kwargs.get('atom_scale', .5), resolution=kwargs.get('atom_resolution', 100))
+            sphere = o3d.geometry.TriangleMesh.create_sphere(data.atom.radius(atom.symbol)*kwargs.get('atom_scale', .5), resolution=kwargs.get('atom_resolution', 100))
             sphere.translate(atom.coords)
-            sphere = sphere.paint_uniform_color(np.array(atom_data.color(atom.symbol))/255)
+            sphere = sphere.paint_uniform_color(np.array(data.atom.color(atom.symbol))/255)
             sphere.compute_vertex_normals()
 
             self.add_mesh(sphere, material=kwargs.get('atom_material'))
@@ -179,7 +174,6 @@ class Screen2:
 
         # evaluate the orbital on this grid
         gridd.values = orb(gridd.points)
-
 
         # and draw the isosurface with phase
         self.draw_isosurface(gridd, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
