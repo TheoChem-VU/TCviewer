@@ -1,12 +1,10 @@
 import open3d as o3d
-from yutility import atom_data
 from scm import plams
 import numpy as np
 from tcintegral import grid
 import skimage
 from tcviewer import materials
-from tcutility import geometry, log
-
+from tcutility import geometry, data
 
 
 class Screen:
@@ -28,9 +26,9 @@ class Screen:
             mol.guess_bonds()
 
         for atom in mol:
-            sphere = o3d.geometry.TriangleMesh.create_sphere(atom_data.radius(atom.symbol)*kwargs.get('atom_scale', .5), resolution=kwargs.get('atom_resolution', 100))
+            sphere = o3d.geometry.TriangleMesh.create_sphere(data.atom.radius(atom.symbol)*kwargs.get('atom_scale', .5), resolution=kwargs.get('atom_resolution', 100))
             sphere.translate(atom.coords)
-            sphere = sphere.paint_uniform_color(np.array(atom_data.color(atom.symbol))/255)
+            sphere = sphere.paint_uniform_color(np.array(data.atom.color(atom.symbol))/255)
             sphere.compute_vertex_normals()
 
             self.add_mesh(sphere, material=kwargs.get('atom_material'))
@@ -108,7 +106,6 @@ class Screen:
         self.add_mesh(arrow_x)
         self.add_mesh(arrow_y)
         self.add_mesh(arrow_z)
-
 
 
 class Screen2:
