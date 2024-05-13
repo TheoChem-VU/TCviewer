@@ -24,6 +24,38 @@ To get new updates, simply run:
 ```
 git pull
 ```
+## Usage <a name=usage></a>
+TCviewer exports the `Screen` object which can be used to quickly build a scene. All the heavy work, such as setting up the camera, building and coloring meshes, will be done in the background. Please see the examples section for some simple example scripts for you to try out.
 
 ## Examples <a name=examples></a>
-[insert example outputs]
+To draw a molecule, simply run:
+
+```python
+from tcviewer import Screen
+from scm import plams
+
+molecule = 'path/to/molecule.xyz'  # molecules can be given as paths to xyz files
+molecule = plams.Molecule('path/to/molecule.xyz')  # or as plams.Molecule objects
+molecule.guess_bonds()
+with Screen() as scr:
+  scr.draw_molecule(molecule)
+```
+
+To load and draw the HOMO:
+
+```python
+from yutility import orbitals
+from tcviewer import Screen, materials
+import pathlib
+
+rkf_dir = pathlib.Path(__file__).parents[0]/'data'/'NH3BH3'
+
+# load orbitals and choose an MO to draw
+orbs = orbitals.Orbitals(rkf_dir/'adf.rkf')
+homo = orbs.mos['HOMO']
+# generate a cube file
+cub = homo.generate_orbital()
+
+with Screen() as scr:
+	scr.draw_cub(cub, 0.03, material=materials.orbital_matte)
+```
