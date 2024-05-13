@@ -35,3 +35,21 @@ atom_matte.base_reflectance = 0
 atom_matte.base_clearcoat = 0
 atom_matte.thickness = 1
 atom_matte.transmission = 0
+
+
+def orbital_material(material):
+
+	if material == 'shiny':
+		return orbital_shiny
+
+	if material == 'matte':
+		return orbital_matte
+
+def atom_material(material):
+
+	if material == 'shiny':
+		return atom_shiny
+
+	if material == 'matte':
+		return atom_matte
+
