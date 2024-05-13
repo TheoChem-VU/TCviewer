@@ -1,14 +1,10 @@
 import open3d as o3d
-from yutility import atom_data
 from scm import plams
 import numpy as np
 from tcintegral import grid
 import skimage
 from tcviewer import materials
-from TCutility import geometry
-import networkx as nx
-import itertools 
-
+from tcutility import geometry, data
 
 
 class Screen:
@@ -19,7 +15,7 @@ class Screen:
         return self
 
     def __exit__(self, *args, **kwargs):
-        o3d.visualization.draw(self.meshes, show_skybox=False, title='TCViewer')
+        o3d.visualization.draw(self.meshes, show_skybox=False, title='TCViewer', show_ui=False)
 
     def add_mesh(self, geometry, name=None, material=None):
         self.meshes.append(dict(geometry=geometry, name=name or str(id(geometry)), material=material))
@@ -30,9 +26,110 @@ class Screen:
             mol.guess_bonds()
 
         for atom in mol:
-            sphere = o3d.geometry.TriangleMesh.create_sphere(atom_data.radius(atom.symbol)*kwargs.get('atom_scale', .5), resolution=kwargs.get('atom_resolution', 100))
+            sphere = o3d.geometry.TriangleMesh.create_sphere(data.atom.radius(atom.symbol)*kwargs.get('atom_scale', .5), resolution=kwargs.get('atom_resolution', 100))
             sphere.translate(atom.coords)
-            sphere = sphere.paint_uniform_color(np.array(atom_data.color(atom.symbol))/255)
+            sphere = sphere.paint_uniform_color(np.array(data.atom.color(atom.symbol))/255)
+            sphere.compute_vertex_normals()
+
+            self.add_mesh(sphere, material=kwargs.get('atom_material'))
+
+        for bond in mol.bonds:
+            length = bond.length()
+            cylinder = o3d.geometry.TriangleMesh.create_cylinder(kwargs.get('bond_width', .07), length)
+            cylinder.translate((np.array(bond.atom1.coords) + np.array(bond.atom2.coords))/2)
+
+            bond_vec = np.array(bond.atom1.coords) - np.array(bond.atom2.coords)
+            R = geometry.vector_align_rotmat([0, 0, 1], bond_vec)
+            cylinder.rotate(R)
+            cylinder.compute_vertex_normals()
+            cylinder.paint_uniform_color((0, 0, 0))
+
+            self.add_mesh(cylinder, material=kwargs.get('bond_material'))
+
+    def draw_isosurface(self, gridd, isovalue=0, color=None, material=None, with_phase=True):
+        val = gridd.values.reshape(*gridd.shape)
+        if isovalue == 0:
+            with_phase = False
+        if val.min() < isovalue < val.max():
+            spacing = gridd.spacing if len(gridd.spacing) == 3 else gridd.spacing * 3
+            verts, faces, normals, values = skimage.measure.marching_cubes(val, isovalue, spacing=spacing, method='lorensen')
+            verts = o3d.cpu.pybind.utility.Vector3dVector(verts + gridd.origin)
+            triangles = o3d.cpu.pybind.utility.Vector3iVector(faces)
+
+            mesh = o3d.geometry.TriangleMesh(verts, triangles)
+            if color is not None:
+                mesh.paint_uniform_color(np.atleast_2d(color)[0])
+
+            mesh.compute_vertex_normals()
+            self.add_mesh(mesh, material=material)
+
+        if with_phase:
+            self.draw_isosurface(gridd, isovalue=-isovalue, color=np.atleast_2d(color)[-1], material=material, with_phase=False)
+
+    def draw_orbital(self, orb, gridd=None, isovalue=0.03, color1=[0, 0, 1], color2=[1, 0, 0], material=materials.orbital_shiny):
+        # define a default grid if one is not given
+        if gridd is None:
+            gridd = grid.molecule_bounding_box(orb.molecule, spacing=.1, margin=4)
+
+        # evaluate the orbital on this grid
+        gridd.values = orb(gridd.points)
+
+        # and draw the isosurface with phase
+        self.draw_isosurface(gridd, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
+
+    def draw_cub(self, cub: grid.Grid or str, isovalue=0.03, color1=[0, 0, 1], color2=[1, 0, 0], material=materials.orbital_shiny):
+        if isinstance(cub, str):
+            cub = grid.from_cub_file(cub)
+        self.draw_molecule(cub.molecule)
+        self.draw_isosurface(cub, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
+
+    def draw_axes(self, center=[0, 0, 0], length=1, width=.04, **kwargs):
+        arrow_x = o3d.geometry.TriangleMesh.create_arrow(width, width*2, cylinder_height=length, cone_height=length*.2, **kwargs)
+        arrow_x.paint_uniform_color([1, 0, 0])
+        arrow_x.translate(-np.array(center))
+        arrow_x.rotate(geometry.vector_align_rotmat([0, 0, 1], [1, 0, 0]), -np.array(center))
+
+        arrow_y = o3d.geometry.TriangleMesh.create_arrow(width, width*2, cylinder_height=length, cone_height=length*.2, **kwargs)
+        arrow_y.paint_uniform_color([0, 1, 0])
+        arrow_y.translate(-np.array(center))
+        arrow_y.rotate(geometry.vector_align_rotmat([0, 0, 1], [0, 1, 0]), -np.array(center))
+
+        arrow_z = o3d.geometry.TriangleMesh.create_arrow(width, width*2, cylinder_height=length, cone_height=length*.2, **kwargs)
+        arrow_z.translate(-np.array(center))
+        arrow_z.paint_uniform_color([0, 0, 1])
+
+        self.add_mesh(arrow_x)
+        self.add_mesh(arrow_y)
+        self.add_mesh(arrow_z)
+
+
+class Screen2:
+    def __init__(self, **kwargs):
+        self.app = o3d.visualization.gui.Application.instance
+        self.app.initialize()
+        self.window = self.app.create_window('TCviewer', 640, 480)
+        self.renderer = self.window.renderer
+        # self.renderer.create_window()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.app.run()
+        del self.app  # we have to delete this reference to fix some errors
+
+    def add_mesh(self, geometry, name=None, material=None):
+        self.renderer.scene.add_geometry(dict(geometry=geometry, name=name or str(id(geometry)), material=material))
+
+    def draw_molecule(self, mol: str or plams.Molecule, **kwargs):
+        if isinstance(mol, str):
+            mol = plams.Molecule(mol)
+            mol.guess_bonds()
+
+        for atom in mol:
+            sphere = o3d.geometry.TriangleMesh.create_sphere(data.atom.radius(atom.symbol)*kwargs.get('atom_scale', .5), resolution=kwargs.get('atom_resolution', 100))
+            sphere.translate(atom.coords)
+            sphere = sphere.paint_uniform_color(np.array(data.atom.color(atom.symbol))/255)
             sphere.compute_vertex_normals()
 
             self.add_mesh(sphere, material=kwargs.get('atom_material'))
@@ -170,11 +267,9 @@ if __name__ == '__main__':
     for mo_index in range(len(energies)):
         # construct the MO using our AOs and coefficients
         mo = MolecularOrbital(aos, coefficients[:, mo_index], mol)
-
         # create a new screen
         with Screen() as scr:
             scr.draw_molecule(mol)
-            mat = materials.orbital_shiny
-            # mat.base_color = [1, 1, 1, .5]
-            scr.draw_orbital(mo, material=mat)
+            scr.draw_orbital(mo, material=materials.orbital_shiny, isovalue=.03)
+
             scr.draw_axes()

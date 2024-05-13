@@ -1,12 +1,13 @@
 from tcintegral import basis_set, MolecularOrbital
 from scm import plams
-
+import numpy as np 
+from tcviewer import Screen, materials
 
 # get a basis set from basis_sets
 bs = basis_set.STO2G
 
 # read a molecule to use
-mol = plams.Molecule('/Users/yumanhordijk/Desktop/acrolein.xyz')
+mol = plams.Molecule('../examples/data/xyz/acrolein.xyz')
 mol.guess_bonds()
 
 # get atomic orbitals for this molecule
