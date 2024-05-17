@@ -77,9 +77,11 @@ class Screen:
         # and draw the isosurface with phase
         self.draw_isosurface(gridd, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
 
-    def draw_cub(self, cub: grid.Grid or str, isovalue=0.03, color1=[0, 0, 1], color2=[1, 0, 0], material=materials.orbital_shiny):
+    def draw_cub(self, cub: grid.Grid or str, isovalue=0.03, color1=[0, 0, 1], color2=[1, 0, 0], material='shiny'):
         if isinstance(cub, str):
             cub = grid.from_cub_file(cub)
+        if isinstance(material, str):
+            material = materials.orbital_material(material)
         self.draw_molecule(cub.molecule)
         self.draw_isosurface(cub, isovalue=isovalue, color=[color1, color2], material=material, with_phase=True)
 
