@@ -10,7 +10,7 @@ from vtkmodules.vtkRenderingCore import vtkActor, vtkAssembly, vtkFollower, vtkP
 from vtkmodules.vtkFiltersSources import vtkLineSource, vtkSphereSource, vtkRegularPolygonSource
 from vtkmodules.vtkFiltersCore import vtkTubeFilter
 
-from tcviewer import mol_widget
+from tcviewer import mol_widget, settings
 import tcutility
 import pyfmo
 from scm import plams
@@ -49,6 +49,9 @@ class Screen(QtWidgets.QApplication):
         self.window.layout.setColumnStretch(1, 1)
         self.window.layout.setColumnStretch(2, 0)
 
+        self.settings = settings.DefaultSettings()
+        self.window.layout.addWidget(self.settings, 0, 3, 2, 1)
+
 
     def __enter__(self):
         self.__post_init__()
@@ -64,7 +67,13 @@ class Screen(QtWidgets.QApplication):
     def add_molscene(self):
         return self.molview.new_scene()
 
+    def screenshot(self, *args, **kwargs):
+        self.molview.screenshot(*args, **kwargs)
 
+    def screenshots(self, *args, **kwargs):
+        self.molview.screenshots(*args, **kwargs)
+
+        
 if __name__ == '__main__':
     with Screen() as scr:
         with scr.add_molscene() as scene:
@@ -75,7 +84,7 @@ if __name__ == '__main__':
             mol = cub.molecule
             v_cx = mol.as_array()[1] - mol.as_array()[0]
 
-            T = vtk.vtkTransform()
+            T = scene.transform
             T.PostMultiply()
             T.Translate(*(-np.mean(mol.as_array(), axis=0)).tolist())
 
@@ -94,9 +103,10 @@ if __name__ == '__main__':
             T.RotateZ(angles_y[2] * 180 / np.pi)
 
             T.RotateX(7)
-            scene.scene_assembly.SetUserTransform(T)
+            # scene.scene_assembly.SetUserTransform(T)
 
             actor = scene.draw_molecule(mol)
             actor = scene.draw_isosurface(cub, -0.03, [1, 1, 0])
             actor = scene.draw_isosurface(cub,  0.03, [0, 1, 1])
 
+        scr.screenshots(directory='screenshots')
