@@ -7,7 +7,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtkmodules.vtkCommonColor import vtkNamedColors
 from vtkmodules.vtkFiltersSources import vtkConeSource
 from vtkmodules.vtkRenderingCore import vtkActor, vtkAssembly, vtkFollower, vtkPolyDataMapper, vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor, vtkLight, vtkCamera
-from vtkmodules.vtkFiltersSources import vtkLineSource, vtkSphereSource, vtkRegularPolygonSource
+from vtkmodules.vtkFiltersSources import vtkLineSource, vtkArcSource, vtkSphereSource, vtkRegularPolygonSource
 from vtkmodules.vtkFiltersCore import vtkTubeFilter
 
 from tcviewer import mol_widget
@@ -237,6 +237,53 @@ class MoleculeScene:
         self.renderer.AddActor(actor)
         # self.Render()
 
+    def draw_angle(self, a1, a2, a3):
+        # c1, c2, c3 = np.array(a1.coords), np.array(a2.coords), np.array(a3.coords)
+        c1 = np.array(a1.coords)
+        c2 = np.array(a2.coords)
+        c3 = np.array(a3.coords)
+
+        arcSource = vtk.vtkArcSource()
+
+        u, v = c1 - c2, c3 - c2
+        u, v = u / np.linalg.norm(u), v / np.linalg.norm(v)
+
+        arcSource.SetCenter(c2)
+        arcSource.SetPoint1(u * .7 + v * .2 + c2)
+        arcSource.SetPoint2(v * .7 + u * .2 + c2)
+        arcSource.SetResolution(100)
+
+        tubeFilter = vtkTubeFilter()
+        tubeFilter.source = arcSource
+        tubeFilter.SetInputConnection(arcSource.GetOutputPort())
+        tubeFilter.SetRadius(settings['bond']['radius'] / 5)
+        tubeFilter.SetNumberOfSides(20)
+
+        tubeMapper = vtkPolyDataMapper()
+        tubeMapper.SetInputConnection(tubeFilter.GetOutputPort())
+
+        tubeActor = vtkActor()
+        tubeActor.SetMapper(tubeMapper)
+        tubeActor.GetProperty().SetColor([0, 0, 0])
+        tubeActor.SetUserTransform(self.transform)
+        self.renderer.AddActor(tubeActor)
+
+        # angle = tcutility.geometry.parameter([c1, c2, c3], 0, 1, 2)
+
+        # text = vtk.vtkVectorText()
+        # text.SetText(f'{angle: .1f}°')
+        # textMapper = vtk.vtkPolyDataMapper()
+        # textMapper.SetInputConnection(text.GetOutputPort())
+        # textActor = vtk.vtkFollower()
+        # textActor.SetMapper(textMapper)
+        # # textActor.SetUserTransform(self.transform)
+        # textActor.SetCamera(self.renderer.GetActiveCamera())
+        # textActor.SetScale(0.2, 0.2, 0.2)
+        # textActor.SetPosition(self.transform.TransformPoint(c2 + (u + v) / 1.5))
+        # # textActor.SetActiveCamera(self._base_ren.GetActiveCamera())
+        # self.camera_followers.append({'actor': textActor, 'rotatex': 0, 'rotatey': 0})
+        # self.renderer.AddActor(textActor)
+
 
 class MoleculeWidget(QVTKRenderWindowInteractor):
     def __init__(self, parent):
@@ -426,8 +473,11 @@ class MoleculeWidget(QVTKRenderWindowInteractor):
         if len(self.scenes) == 0:
             return
 
+        self.remove_all_highlights()
+
         self.active_scene.save_camera()
 
+        index = index % len(self.scenes)
         [scene.renderer.DrawOff() for scene in self.scenes]
         self.scenes[index].renderer.DrawOn()
         self.scenes[index].load_camera()
@@ -438,7 +488,7 @@ class MoleculeWidget(QVTKRenderWindowInteractor):
         self.Render()
 
         self.parent.molviewslider.setMaximum(len(self.scenes) - 1)
-        self.parent.molviewslider.setValue(index % len(self.scenes))
+        self.parent.molviewslider.setValue(index)
 
     @property
     def active_scene_index(self):
