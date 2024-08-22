@@ -247,7 +247,7 @@ class MoleculeScene:
         actor.SetMapper(mapper)
         actor.GetProperty().SetColor(*color)
         actor.GetProperty().SetOpacity(.5)
-        actor.GetProperty().SetAmbient(-0)
+        actor.GetProperty().SetAmbient(.2)
         actor.GetProperty().SetDiffuse(1)
         actor.GetProperty().SetSpecular(5)
         actor.GetProperty().SetSpecularPower(70)
@@ -449,8 +449,10 @@ class MoleculeWidget(QVTKRenderWindowInteractor):
         highlightActor.SetMapper(highlightMapper)
         highlightActor.GetProperty().SetColor([0, 1, 1])
         highlightActor.GetProperty().SetOpacity(.5)
+        highlightActor.GetProperty().SetAmbient(1)
         highlightActor.PickableOff()
         highlightActor.SetUserTransform(self.active_scene.transform)
+        highlightActor.type = 'highlight'
         ren.AddActor(highlightActor)
         self.selected_actor_highlights[actor] = highlightActor
 
