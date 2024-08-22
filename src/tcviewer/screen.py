@@ -52,7 +52,6 @@ class Screen(QtWidgets.QApplication):
         self.settings = settings.DefaultSettings()
         self.window.layout.addWidget(self.settings, 0, 3, 2, 1)
 
-
     def __enter__(self):
         self.__post_init__()
         return self
@@ -73,7 +72,7 @@ class Screen(QtWidgets.QApplication):
     def screenshots(self, *args, **kwargs):
         self.molview.screenshots(*args, **kwargs)
 
-        
+
 if __name__ == '__main__':
     with Screen() as scr:
         with scr.add_molscene() as scene:
@@ -82,31 +81,16 @@ if __name__ == '__main__':
 
             cub = orbs.mos['LUMO'].cube_file()
             mol = cub.molecule
-            v_cx = mol.as_array()[1] - mol.as_array()[0]
 
-            T = scene.transform
-            T.PostMultiply()
-            T.Translate(*(-np.mean(mol.as_array(), axis=0)).tolist())
-
-            R_x = tcutility.geometry.vector_align_rotmat(v_cx, [1, 0, 0])
-            angles_x = tcutility.geometry.rotmat_to_angles(R_x)
-            T.RotateX(angles_x[0] * 180 / np.pi)
-            T.RotateY(angles_x[1] * 180 / np.pi)
-            T.RotateZ(angles_x[2] * 180 / np.pi)
-
-            mol_ = tcutility.geometry.apply_rotmat(mol.as_array(), R_x)
-            n_cxh = np.cross(mol_[1] - mol_[0], mol_[-1] - mol_[0])
-            R_y = tcutility.geometry.vector_align_rotmat(n_cxh, [0, 1, 0])
-            angles_y = tcutility.geometry.rotmat_to_angles(R_y)
-            T.RotateX(angles_y[0] * 180 / np.pi)
-            T.RotateY(angles_y[1] * 180 / np.pi)
-            T.RotateZ(angles_y[2] * 180 / np.pi)
-
-            T.RotateX(7)
-            # scene.scene_assembly.SetUserTransform(T)
+            T = tcutility.geometry.MolTransform(mol)
+            T.center(1)  # center on C1
+            T.align_to_vector(1, 2, [1, 0, 0])  # put C=O bond on x-axis
+            T.align_to_plane(2, 1, 4, [0, 1, 0])  # place the molecule on the xz-plane
+            # T.rotate(x=7 * np.pi / 180)
+            scene.transform = T.to_vtkTransform()
 
             actor = scene.draw_molecule(mol)
-            actor = scene.draw_isosurface(cub, -0.03, [1, 1, 0])
+            actor = scene.draw_isosurface(cub, -0.03, [1, .5, 0])
             actor = scene.draw_isosurface(cub,  0.03, [0, 1, 1])
 
         scr.screenshots(directory='screenshots')
