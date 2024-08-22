@@ -24,6 +24,7 @@ class MoleculeScene:
         self.parent = parent
         self.renderer = vtkRenderer()
         self.renderer.SetBackground([1, 1, 1])
+        self.renderer.UseFXAAOn()
         self.parent.renWin.AddRenderer(self.renderer)
 
         light = vtkLight()
