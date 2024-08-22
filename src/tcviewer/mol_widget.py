@@ -132,7 +132,7 @@ class MoleculeScene:
         self.parent.Start()
         self.save_camera()
 
-        self.post_draw = lambda: ...
+        # self.post_draw = lambda: ...
 
     def draw_molecule(self, mol):
         for atom in mol:
@@ -159,9 +159,10 @@ class MoleculeScene:
             circleActor.SetMapper(circleMapper)
             circleActor.GetProperty().SetColor([0, 0, 0])
             circleActor.PickableOff()
+            circleActor.type = 'follower'
             # circleActor.SetUserTransform(self.transform)
 
-            self.camera_followers.append({'actor': circleActor, 'rotatex': rotatex, 'rotatey': rotatey})
+            self.camera_followers.append({'actor': circleActor, 'rotatex': rotatex, 'rotatey': rotatey, 'cumrotatex': 0, 'cumrotatey': 0, 'orig_pos': atom.coords})
             self.renderer.AddActor(circleActor)
 
         sphere = vtkSphereSource()
@@ -256,7 +257,14 @@ class MoleculeScene:
         actor.SetUserTransform(self.transform)
 
         self.renderer.AddActor(actor)
-        # self.Render()
+
+    def remove_angle(self, a1, a2, a3):
+        for act in self.renderer.GetActors():
+            if not hasattr(act, 'type') or act.type != 'angle':
+                continue
+
+            if all(a in act.atoms for a in (a1, a2, a3)):
+                self.renderer.RemoveActor(act)
 
     def draw_angle(self, a1, a2, a3):
         # c1, c2, c3 = np.array(a1.coords), np.array(a2.coords), np.array(a3.coords)
@@ -287,7 +295,21 @@ class MoleculeScene:
         tubeActor.SetMapper(tubeMapper)
         tubeActor.GetProperty().SetColor([0, 0, 0])
         tubeActor.SetUserTransform(self.transform)
+        tubeActor.atoms = (a1, a2, a3)
+        tubeActor.type = 'angle'
         self.renderer.AddActor(tubeActor)
+
+    def toggle_angle(self, a1, a2, a3):
+        for act in self.renderer.GetActors():
+            if not hasattr(act, 'type') or act.type != 'angle':
+                continue
+
+            if all(a in act.atoms for a in (a1, a2, a3)):
+                self.remove_angle(a1, a2, a3)
+                break
+        else:
+            self.draw_angle(a1, a2, a3)
+
 
         # angle = tcutility.geometry.parameter([c1, c2, c3], 0, 1, 2)
 
@@ -315,6 +337,7 @@ class MoleculeWidget(QVTKRenderWindowInteractor):
 
         self.molecule_renderers = []
         self.renWin = self.GetRenderWindow()
+        # self.renWin.SetMultiSamples(4)
         self.renWin.BordersOn()
         self.interactor_style = vtk.vtkInteractorStyleTrackballCamera()
         self.SetInteractorStyle(self.interactor_style)
@@ -544,6 +567,7 @@ class MoleculeWidget(QVTKRenderWindowInteractor):
 class MoleculeWidgetKeyPressFilter(QtCore.QObject):
     def eventFilter(self, widget, event):
         if event.type() == QtCore.QEvent.KeyPress:
+            scene = self.parent().scenes[self.parent().active_scene_index]
             if event.key() == QtCore.Qt.Key_Right:
                 self.parent().next_mol()
             if event.key() == QtCore.Qt.Key_Left:
@@ -552,8 +576,16 @@ class MoleculeWidgetKeyPressFilter(QtCore.QObject):
                 print('copy')
             if event.key() == QtCore.Qt.Key_V and event.modifiers() == QtCore.Qt.ControlModifier:
                 print('paste')
+            if event.key() == QtCore.Qt.Key_Space:
+                scene.reset_camera()
+                scene.post_draw()
 
-            scene = self.parent().scenes[self.parent().active_scene_index]
+            if event.key() == QtCore.Qt.Key_P:
+                atoms = [actor.atom for actor in self.parent().selected_actors if actor.type == 'atom']
+                if len(atoms) == 3:
+                    scene.toggle_angle(*atoms)
+                    scene.post_draw()
+
             bond_selected = len(self.parent().selected_actors) == 1 and self.parent().selected_actors[0].type == 'bond'
             atoms2_selected = len(self.parent().selected_actors) == 2 and self.parent().selected_actors[0].type == 'atom' and self.parent().selected_actors[1].type == 'atom'
             if atoms2_selected:
