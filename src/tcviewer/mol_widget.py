@@ -95,11 +95,30 @@ class MoleculeScene:
         camera.SetDistance(self.cam_settings['distance'])
         camera.SetClippingRange(self.cam_settings['clipping range'])
 
+    def reset_camera(self):
+        self.renderer.ResetCamera()
+        camera = self.renderer.GetActiveCamera()
+        p = camera.GetPosition()
+        plen = np.linalg.norm(p)
+        camera.SetPosition([0, 0, plen])
+        print(camera.GetPosition())
+        # camera.SetPosition(self.cam_settings['position'])
+        # camera.SetFocalPoint([0, 0, 0])
+        camera.SetFocalPoint(self.cam_settings['focal point'])
+        camera.SetViewUp([0, 1, 0])
+        # camera.SetDistance(self.cam_settings['distance'])
+        camera.SetClippingRange(self.cam_settings['clipping range'])
+        # print(camera.GetViewUp())
+        self.save_camera()
+
     def post_draw(self):
         for follower in self.camera_followers:
-            follower['actor'].RotateX(follower['rotatex'])
-            follower['actor'].RotateY(follower['rotatey'])
-            pos = follower['actor'].GetPosition()
+            if not follower.get('rotated', False):
+                follower['actor'].RotateX(follower['rotatex'])
+                follower['actor'].RotateY(follower['rotatey'])
+                follower['rotated'] = True
+
+            pos = follower['orig_pos']
             follower['actor'].SetPosition(self.transform.TransformPoint(pos))
         
         # for actor in self.renderer.GetActors():
