@@ -34,6 +34,7 @@ class MoleculeScene:
         self.save_camera()
 
         self.transform = vtk.vtkTransform()
+        self.transform.PostMultiply()
         self.camera_followers = []
 
     def __enter__(self):
