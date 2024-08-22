@@ -605,4 +605,62 @@ class MoleculeWidgetKeyPressFilter(QtCore.QObject):
                     self.parent().remove_highlight(actor)
                     self.parent().Render()
 
+            if event.key() == QtCore.Qt.Key_A and event.modifiers() == QtCore.Qt.ControlModifier:
+                atoms = [actor.atom for actor in self.parent().selected_actors if actor.type == 'atom']
+                bonds = [actor.atoms for actor in self.parent().selected_actors if actor.type == 'bond']
+                
+                T = scene.transform
+                if len(atoms) == 0:
+                    # if the user selected a single bond we align it to the x-axis
+                    if len(bonds) == 1:
+                        a1, a2 = bonds[0]
+                        c1, c2 = np.array(scene.transform.TransformPoint(a1.coords)), np.array(scene.transform.TransformPoint(a2.coords))
+                        R = tcutility.geometry.vector_align_rotmat(c1 - c2, [1, 0, 0])
+                        angles = tcutility.geometry.rotmat_to_angles(R)
+                        T.Translate(-c1)
+                        T.RotateX(angles[0] * 180 / np.pi)
+                        T.RotateY(angles[1] * 180 / np.pi)
+                        T.RotateZ(angles[2] * 180 / np.pi)
+
+                        # self.parent().renWin.Render()
+                        self.parent().Render()
+                        scene.reset_camera()
+                        scene.post_draw()
+
+
+                    # if the user selected a single bond we align it to the x-axis
+                    if len(bonds) == 2:
+                        a1, a2, a3, a4 = [*bonds[0], *bonds[1]]
+                        c1 = np.array(scene.transform.TransformPoint(a1.coords))
+                        c2 = np.array(scene.transform.TransformPoint(a2.coords))
+
+                        R = tcutility.geometry.vector_align_rotmat(c1 - c2, [1, 0, 0])
+                        angles = tcutility.geometry.rotmat_to_angles(R)
+                        T.Translate(-c1)
+                        T.RotateX(angles[0] * 180 / np.pi)
+                        T.RotateY(angles[1] * 180 / np.pi)
+                        T.RotateZ(angles[2] * 180 / np.pi)
+
+
+                        c1 = np.array(scene.transform.TransformPoint(a1.coords))
+                        c2 = np.array(scene.transform.TransformPoint(a2.coords))
+                        c3 = np.array(scene.transform.TransformPoint(a3.coords))
+                        c4 = np.array(scene.transform.TransformPoint(a4.coords))
+
+                        n = np.cross(c1 - c2, c3 - c4)
+
+                        R = tcutility.geometry.vector_align_rotmat(n, [0, 1, 0])
+                        angles = tcutility.geometry.rotmat_to_angles(R)
+                        T.RotateX(angles[0] * 180 / np.pi)
+                        T.RotateY(angles[1] * 180 / np.pi)
+                        T.RotateZ(angles[2] * 180 / np.pi)
+
+                        # self.parent().renWin.Render()
+                        self.parent().Render()
+                        scene.reset_camera()
+                        scene.post_draw()
+
+                print('align!', atoms)
+
+
         return False
