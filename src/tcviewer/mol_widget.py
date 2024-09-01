@@ -59,23 +59,6 @@ class MoleculeScene:
         writer.SetInputConnection(img_filter.GetOutputPort())
         writer.Write()
 
-    #   vtkNew<vtkWindowToImageFilter> windowToImageFilter;
-    #   windowToImageFilter->SetInput(renderWindow);
-    # #if VTK_MAJOR_VERSION >= 8 || VTK_MAJOR_VERSION == 8 && VTK_MINOR_VERSION >= 90
-    #   windowToImageFilter->SetScale(2); // image quality
-    # #else
-    #   windowToImageFilter->SetMagnification(2); // image quality
-    # #endif
-    #   windowToImageFilter->SetInputBufferTypeToRGBA(); // also record the alpha
-    #                                                    // (transparency) channel
-    #   windowToImageFilter->ReadFrontBufferOff();       // read from the back buffer
-    #   windowToImageFilter->Update();
-
-    #   vtkNew<vtkPNGWriter> writer;
-    #   writer->SetFileName("screenshot2.png");
-    #   writer->SetInputConnection(windowToImageFilter->GetOutputPort());
-    #   writer->Write();
-
     def save_camera(self):
         camera = self.renderer.GetActiveCamera()
         self.cam_settings = {}
