@@ -353,11 +353,10 @@ class MoleculeScene:
 
 class MoleculeWidget:
     def __new__(self, parent=None, headless=False):
-        if headless:
+        if headless or not has_qt:
             return _HeadlessMoleculeWidget()
         else:
             return _MoleculeWidget(parent)
-
 
 
 class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
@@ -462,343 +461,343 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
             scene.screenshot(path)
 
 
+if has_qt:
+    class _MoleculeWidget(QVTKRenderWindowInteractor):
+        def __init__(self, parent):
+            super().__init__()
+            self.scenes = []
 
-class _MoleculeWidget(QVTKRenderWindowInteractor):
-    def __init__(self, parent):
-        super().__init__()
-        self.scenes = []
+            self.parent = parent
 
-        self.parent = parent
+            self.molecule_renderers = []
+            self.renWin = self.GetRenderWindow()
+            # self.renWin.SetMultiSamples(4)
+            self.renWin.BordersOn()
+            self.interactor_style = vtk.vtkInteractorStyleTrackballCamera()
+            self.SetInteractorStyle(self.interactor_style)
+            self._base_ren = vtkRenderer()
+            self._base_ren.SetBackground(1, 1, 1)
+            self._base_ren.DrawOff()
+            self.renWin.AddRenderer(self._base_ren)
+            self.SetRenderWindow(self.renWin)
 
-        self.molecule_renderers = []
-        self.renWin = self.GetRenderWindow()
-        # self.renWin.SetMultiSamples(4)
-        self.renWin.BordersOn()
-        self.interactor_style = vtk.vtkInteractorStyleTrackballCamera()
-        self.SetInteractorStyle(self.interactor_style)
-        self._base_ren = vtkRenderer()
-        self._base_ren.SetBackground(1, 1, 1)
-        self._base_ren.DrawOff()
-        self.renWin.AddRenderer(self._base_ren)
-        self.SetRenderWindow(self.renWin)
+            self.installEventFilter(MoleculeWidgetKeyPressFilter(parent=self))
+            self.setAcceptDrops(True)
 
-        self.installEventFilter(MoleculeWidgetKeyPressFilter(parent=self))
-        self.setAcceptDrops(True)
+            self.Initialize()
+            self.Start()
 
-        self.Initialize()
-        self.Start()
+            self.selected_actors = []
+            self.selected_actor_highlights = {}
+            self.picker = vtk.vtkPropPicker()
+            self.AddObserver('EndInteractionEvent', self.highlight_observer)
+            self.AddObserver('LeftButtonPressEvent', self.record_mouse_position)
 
-        self.selected_actors = []
-        self.selected_actor_highlights = {}
-        self.picker = vtk.vtkPropPicker()
-        self.AddObserver('EndInteractionEvent', self.highlight_observer)
-        self.AddObserver('LeftButtonPressEvent', self.record_mouse_position)
-
-        self._recording_mouse = False
-        self._mouse_pos = None
-
-    def record_mouse_position(self, interactor, event):
-        self._recording_mouse = True
-        self._mouse_pos = interactor.GetEventPosition()
-
-    # The following three methods set up dragging and dropping for the app
-    def dragEnterEvent(self, e):
-        if e.mimeData().hasUrls:
-            e.accept()
-        else:
-            e.ignore()
-
-    def dragMoveEvent(self, e):
-        if e.mimeData().hasUrls:
-            e.accept()
-        else:
-            e.ignore()
-
-    def dropEvent(self, e):
-        """
-        Drop files directly onto the widget
-        File locations are stored in fname
-        :param e:
-        :return:
-        """
-        if e.mimeData().hasUrls:
-            e.setDropAction(QtCore.Qt.CopyAction)
-            e.accept()
-            for url in e.mimeData().urls():
-                fname = str(url.toLocalFile())
-                self.draw_molecule(fname)
-        else:
-            e.ignore()
-
-    # The following three methods set up dragging and dropping for the app
-    def highlight_observer(self, interactor, event):
-        # check if an actor was picked by the user
-        pick = self.picker.PickProp(*self.GetEventPosition(), self.active_scene.renderer)
-
-        # if we did not pick an actor we check if we clicked (not dragged) outside
-        if not pick:
-            if self._mouse_pos == self.GetEventPosition():
-                self.remove_all_highlights()
-            return
-
-        actor = self.picker.GetViewProp()
-
-        # lets toggle the selected actor
-        self.toggle_highlight(actor)
-        # if the user did not hold the shift key then we deselect the other actors
-        if not self.GetShiftKey():
-            self.remove_all_highlights(exception=actor)
-
-        if self._recording_mouse:
-            self.LeftButtonReleaseEvent()
             self._recording_mouse = False
+            self._mouse_pos = None
+
+        def record_mouse_position(self, interactor, event):
+            self._recording_mouse = True
+            self._mouse_pos = interactor.GetEventPosition()
+
+        # The following three methods set up dragging and dropping for the app
+        def dragEnterEvent(self, e):
+            if e.mimeData().hasUrls:
+                e.accept()
+            else:
+                e.ignore()
+
+        def dragMoveEvent(self, e):
+            if e.mimeData().hasUrls:
+                e.accept()
+            else:
+                e.ignore()
+
+        def dropEvent(self, e):
+            """
+            Drop files directly onto the widget
+            File locations are stored in fname
+            :param e:
+            :return:
+            """
+            if e.mimeData().hasUrls:
+                e.setDropAction(QtCore.Qt.CopyAction)
+                e.accept()
+                for url in e.mimeData().urls():
+                    fname = str(url.toLocalFile())
+                    self.draw_molecule(fname)
+            else:
+                e.ignore()
+
+        # The following three methods set up dragging and dropping for the app
+        def highlight_observer(self, interactor, event):
+            # check if an actor was picked by the user
+            pick = self.picker.PickProp(*self.GetEventPosition(), self.active_scene.renderer)
+
+            # if we did not pick an actor we check if we clicked (not dragged) outside
+            if not pick:
+                if self._mouse_pos == self.GetEventPosition():
+                    self.remove_all_highlights()
+                return
+
+            actor = self.picker.GetViewProp()
+
+            # lets toggle the selected actor
+            self.toggle_highlight(actor)
+            # if the user did not hold the shift key then we deselect the other actors
+            if not self.GetShiftKey():
+                self.remove_all_highlights(exception=actor)
+
+            if self._recording_mouse:
+                self.LeftButtonReleaseEvent()
+                self._recording_mouse = False
 
 
-    def add_highlight(self, actor):
-        ren = self.active_scene.renderer
-        self.selected_actors.append(actor)
-        if actor.type == 'atom':
-            actor.SetScale([0.75, 0.75, 0.75])
-            highlight = vtkSphereSource()
-            highlight.SetPhiResolution(35)
-            highlight.SetThetaResolution(45)
-            highlight.SetCenter([0, 0, 0])
-            radius = actor.GetMapper().GetInputConnection(0, 0).GetProducer().GetRadius()
-            highlight.SetRadius(radius)
+        def add_highlight(self, actor):
+            ren = self.active_scene.renderer
+            self.selected_actors.append(actor)
+            if actor.type == 'atom':
+                actor.SetScale([0.75, 0.75, 0.75])
+                highlight = vtkSphereSource()
+                highlight.SetPhiResolution(35)
+                highlight.SetThetaResolution(45)
+                highlight.SetCenter([0, 0, 0])
+                radius = actor.GetMapper().GetInputConnection(0, 0).GetProducer().GetRadius()
+                highlight.SetRadius(radius)
 
-        elif actor.type == 'bond':
-            tube = actor.GetMapper().GetInputConnection(0, 0).GetProducer()
-            source = tube.source
-            line = vtkLineSource()
-            line.SetPoint1(*source.GetPoint1())
-            line.SetPoint2(*source.GetPoint2())
-            highlight = vtkTubeFilter()
-            highlight.SetInputConnection(line.GetOutputPort())
-            highlight.SetRadius(tube.GetRadius())
-            highlight.SetNumberOfSides(20)
-            tube.SetRadius(tube.GetRadius() / 1.5)
+            elif actor.type == 'bond':
+                tube = actor.GetMapper().GetInputConnection(0, 0).GetProducer()
+                source = tube.source
+                line = vtkLineSource()
+                line.SetPoint1(*source.GetPoint1())
+                line.SetPoint2(*source.GetPoint2())
+                highlight = vtkTubeFilter()
+                highlight.SetInputConnection(line.GetOutputPort())
+                highlight.SetRadius(tube.GetRadius())
+                highlight.SetNumberOfSides(20)
+                tube.SetRadius(tube.GetRadius() / 1.5)
 
-        highlightMapper = vtkPolyDataMapper()
-        highlightMapper.SetInputConnection(highlight.GetOutputPort())
-        highlightActor = vtkActor()
-        highlightActor.SetPosition(actor.GetPosition())
-        highlightActor.SetMapper(highlightMapper)
-        highlightActor.GetProperty().SetColor([0, 1, 1])
-        highlightActor.GetProperty().SetOpacity(.5)
-        highlightActor.GetProperty().SetAmbient(1)
-        highlightActor.PickableOff()
-        highlightActor.SetUserTransform(self.active_scene.transform)
-        highlightActor.type = 'highlight'
-        ren.AddActor(highlightActor)
-        self.selected_actor_highlights[actor] = highlightActor
+            highlightMapper = vtkPolyDataMapper()
+            highlightMapper.SetInputConnection(highlight.GetOutputPort())
+            highlightActor = vtkActor()
+            highlightActor.SetPosition(actor.GetPosition())
+            highlightActor.SetMapper(highlightMapper)
+            highlightActor.GetProperty().SetColor([0, 1, 1])
+            highlightActor.GetProperty().SetOpacity(.5)
+            highlightActor.GetProperty().SetAmbient(1)
+            highlightActor.PickableOff()
+            highlightActor.SetUserTransform(self.active_scene.transform)
+            highlightActor.type = 'highlight'
+            ren.AddActor(highlightActor)
+            self.selected_actor_highlights[actor] = highlightActor
 
-    def remove_highlight(self, actor):
-        ren = self.active_scene.renderer
-        self.selected_actors = [actor_ for actor_ in self.selected_actors if actor_ != actor]
-        highlightActor = self.selected_actor_highlights.pop(actor)
-        actor.SetScale([1, 1, 1])
+        def remove_highlight(self, actor):
+            ren = self.active_scene.renderer
+            self.selected_actors = [actor_ for actor_ in self.selected_actors if actor_ != actor]
+            highlightActor = self.selected_actor_highlights.pop(actor)
+            actor.SetScale([1, 1, 1])
 
-        if actor.type == 'bond':
-            tube = actor.GetMapper().GetInputConnection(0, 0).GetProducer()
-            tube.SetRadius(tube.GetRadius() * 1.5)
+            if actor.type == 'bond':
+                tube = actor.GetMapper().GetInputConnection(0, 0).GetProducer()
+                tube.SetRadius(tube.GetRadius() * 1.5)
 
-        ren.RemoveActor(highlightActor)
+            ren.RemoveActor(highlightActor)
 
-    def remove_all_highlights(self, exception=None):
-        exception = tcutility.ensure_list(exception)
-        for actor in self.selected_actors:
-            if actor in exception:
-                continue
-            self.remove_highlight(actor)
+        def remove_all_highlights(self, exception=None):
+            exception = tcutility.ensure_list(exception)
+            for actor in self.selected_actors:
+                if actor in exception:
+                    continue
+                self.remove_highlight(actor)
 
-    def toggle_highlight(self, actor):
-        if actor in self.selected_actors:
-            self.remove_highlight(actor)
-        else:
-            self.add_highlight(actor)
+        def toggle_highlight(self, actor):
+            if actor in self.selected_actors:
+                self.remove_highlight(actor)
+            else:
+                self.add_highlight(actor)
 
-    def draw_molecule(self, xyz):
-        if xyz.endswith('.xyz'):
-            mol = plams.Molecule(xyz)
-            orbs = False
-        else:
-            res = tcutility.results.read(xyz)
-            orbs = pyfmo.orbitals.Orbitals(res.files['adf.rkf'])
-            mol = res.molecule.output
+        def draw_molecule(self, xyz):
+            if xyz.endswith('.xyz'):
+                mol = plams.Molecule(xyz)
+                orbs = False
+            else:
+                res = tcutility.results.read(xyz)
+                orbs = pyfmo.orbitals.Orbitals(res.files['adf.rkf'])
+                mol = res.molecule.output
 
-        # disable previous scenes
-        [scene.renderer.DrawOff() for scene in self.scenes]
+            # disable previous scenes
+            [scene.renderer.DrawOff() for scene in self.scenes]
 
-        with self.new_scene() as scene:
+            with self.new_scene() as scene:
+                scene.renderer.SetActiveCamera(self._base_ren.GetActiveCamera())
+                scene.draw_molecule(mol)
+                if orbs:
+                    scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), 0.03, [0, 1, 1])
+                    scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), -0.03, [1, 1, 0])
+            self.set_active_mol(-1)
+
+        def new_scene(self):
+            scene = MoleculeScene(self)
             scene.renderer.SetActiveCamera(self._base_ren.GetActiveCamera())
-            scene.draw_molecule(mol)
-            if orbs:
-                scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), 0.03, [0, 1, 1])
-                scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), -0.03, [1, 1, 0])
-        self.set_active_mol(-1)
+            [scene.renderer.DrawOff() for scene in self.scenes]
+            self.scenes.append(scene)
+            self.set_active_mol(-1)
+            return scene
 
-    def new_scene(self):
-        scene = MoleculeScene(self)
-        scene.renderer.SetActiveCamera(self._base_ren.GetActiveCamera())
-        [scene.renderer.DrawOff() for scene in self.scenes]
-        self.scenes.append(scene)
-        self.set_active_mol(-1)
-        return scene
+        def next_mol(self):
+            self.set_active_mol(self.active_scene_index + 1)
 
-    def next_mol(self):
-        self.set_active_mol(self.active_scene_index + 1)
+        def previous_mol(self):
+            self.set_active_mol(self.active_scene_index - 1)
 
-    def previous_mol(self):
-        self.set_active_mol(self.active_scene_index - 1)
+        def set_active_mol(self, index):
+            if len(self.scenes) == 0:
+                return
 
-    def set_active_mol(self, index):
-        if len(self.scenes) == 0:
-            return
+            self.remove_all_highlights()
 
-        self.remove_all_highlights()
+            self.active_scene.save_camera()
 
-        self.active_scene.save_camera()
+            index = index % len(self.scenes)
+            [scene.renderer.DrawOff() for scene in self.scenes]
+            self.scenes[index].renderer.DrawOn()
+            self.scenes[index].load_camera()
+            self.scenes[index].renderer.Render()
+            self.renWin.Initialize()
+            self.renWin.Render()
+            self.Initialize()
+            self.Render()
 
-        index = index % len(self.scenes)
-        [scene.renderer.DrawOff() for scene in self.scenes]
-        self.scenes[index].renderer.DrawOn()
-        self.scenes[index].load_camera()
-        self.scenes[index].renderer.Render()
-        self.renWin.Initialize()
-        self.renWin.Render()
-        self.Initialize()
-        self.Render()
+            self.parent.molviewslider.setMaximum(len(self.scenes) - 1)
+            self.parent.molviewslider.setValue(index)
 
-        self.parent.molviewslider.setMaximum(len(self.scenes) - 1)
-        self.parent.molviewslider.setValue(index)
+        @property
+        def active_scene_index(self):
+            if len(self.scenes) == 0:
+                return
+            return [i for i, scene in enumerate(self.scenes) if scene.renderer.GetDraw()][0]
 
-    @property
-    def active_scene_index(self):
-        if len(self.scenes) == 0:
-            return
-        return [i for i, scene in enumerate(self.scenes) if scene.renderer.GetDraw()][0]
+        @property
+        def active_scene(self):
+            return self.scenes[self.active_scene_index]
 
-    @property
-    def active_scene(self):
-        return self.scenes[self.active_scene_index]
+        @property
+        def number_of_scenes(self):
+            return len(self.scenes)
 
-    @property
-    def number_of_scenes(self):
-        return len(self.scenes)
+        def screenshot(self, path):
+            self.active_scene.screenshot(path)
 
-    def screenshot(self, path):
-        self.active_scene.screenshot(path)
+        def screenshots(self, paths=None, directory=None):
+            if paths is None and directory is None:
+                raise ValueError('You should give either the paths or directory argument')
 
-    def screenshots(self, paths=None, directory=None):
-        if paths is None and directory is None:
-            raise ValueError('You should give either the paths or directory argument')
+            if paths is None:
+                os.makedirs(os.path.abspath(directory), exist_ok=True)
+                paths = [os.path.join(directory, f'scene{i}.png') for i in range(self.number_of_scenes)]
 
-        if paths is None:
-            os.makedirs(os.path.abspath(directory), exist_ok=True)
-            paths = [os.path.join(directory, f'scene{i}.png') for i in range(self.number_of_scenes)]
-
-        for scene, path in zip(self.scenes, paths):
-            scene.screenshot(path)
+            for scene, path in zip(self.scenes, paths):
+                scene.screenshot(path)
 
 
 
-class MoleculeWidgetKeyPressFilter(QtCore.QObject):
-    def eventFilter(self, widget, event):
-        if event.type() == QtCore.QEvent.KeyPress:
-            scene = self.parent().scenes[self.parent().active_scene_index]
-            if event.key() == QtCore.Qt.Key_Right:
-                self.parent().next_mol()
-            if event.key() == QtCore.Qt.Key_Left:
-                self.parent().previous_mol()
-            if event.key() == QtCore.Qt.Key_C and event.modifiers() == QtCore.Qt.ControlModifier:
-                print('copy')
-            if event.key() == QtCore.Qt.Key_V and event.modifiers() == QtCore.Qt.ControlModifier:
-                print('paste')
-            if event.key() == QtCore.Qt.Key_Space:
-                scene.reset_camera()
-                scene.post_draw()
-
-            if event.key() == QtCore.Qt.Key_P:
-                atoms = [actor.atom for actor in self.parent().selected_actors if actor.type == 'atom']
-                if len(atoms) == 3:
-                    scene.toggle_angle(*atoms)
+    class MoleculeWidgetKeyPressFilter(QtCore.QObject):
+        def eventFilter(self, widget, event):
+            if event.type() == QtCore.QEvent.KeyPress:
+                scene = self.parent().scenes[self.parent().active_scene_index]
+                if event.key() == QtCore.Qt.Key_Right:
+                    self.parent().next_mol()
+                if event.key() == QtCore.Qt.Key_Left:
+                    self.parent().previous_mol()
+                if event.key() == QtCore.Qt.Key_C and event.modifiers() == QtCore.Qt.ControlModifier:
+                    print('copy')
+                if event.key() == QtCore.Qt.Key_V and event.modifiers() == QtCore.Qt.ControlModifier:
+                    print('paste')
+                if event.key() == QtCore.Qt.Key_Space:
+                    scene.reset_camera()
                     scene.post_draw()
 
-            bond_selected = len(self.parent().selected_actors) == 1 and self.parent().selected_actors[0].type == 'bond'
-            atoms2_selected = len(self.parent().selected_actors) == 2 and self.parent().selected_actors[0].type == 'atom' and self.parent().selected_actors[1].type == 'atom'
-            if atoms2_selected:
-                actor1, actor2 = self.parent().selected_actors
-                if event.key() == QtCore.Qt.Key_1:
-                    scene.draw_single_bond(actor1.atom, actor2.atom)
-                    self.parent().Render()
-
-                if event.key() in [QtCore.Qt.Key_Backspace, QtCore.Qt.Key_Delete]:
-                    scene.remove_bond(actor1.atom, actor2.atom)
-                    self.parent().Render()
-
-            if bond_selected:
-                actor = self.parent().selected_actors[0]
-                if event.key() in [QtCore.Qt.Key_Backspace, QtCore.Qt.Key_Delete]:
-                    scene.remove_bond(*actor.atoms)
-                    self.parent().remove_highlight(actor)
-                    self.parent().Render()
-
-            if event.key() == QtCore.Qt.Key_A and event.modifiers() == QtCore.Qt.ControlModifier:
-                atoms = [actor.atom for actor in self.parent().selected_actors if actor.type == 'atom']
-                bonds = [actor.atoms for actor in self.parent().selected_actors if actor.type == 'bond']
-                
-                T = scene.transform
-                if len(atoms) == 0:
-                    # if the user selected a single bond we align it to the x-axis
-                    if len(bonds) == 1:
-                        a1, a2 = bonds[0]
-                        c1, c2 = np.array(scene.transform.TransformPoint(a1.coords)), np.array(scene.transform.TransformPoint(a2.coords))
-                        R = tcutility.geometry.vector_align_rotmat(c1 - c2, [1, 0, 0])
-                        angles = tcutility.geometry.rotmat_to_angles(R)
-                        T.Translate(-c1)
-                        T.RotateX(angles[0] * 180 / np.pi)
-                        T.RotateY(angles[1] * 180 / np.pi)
-                        T.RotateZ(angles[2] * 180 / np.pi)
-
-                        # self.parent().renWin.Render()
-                        self.parent().Render()
-                        scene.reset_camera()
+                if event.key() == QtCore.Qt.Key_P:
+                    atoms = [actor.atom for actor in self.parent().selected_actors if actor.type == 'atom']
+                    if len(atoms) == 3:
+                        scene.toggle_angle(*atoms)
                         scene.post_draw()
 
-
-                    # if the user selected a single bond we align it to the x-axis
-                    if len(bonds) == 2:
-                        a1, a2, a3, a4 = [*bonds[0], *bonds[1]]
-                        c1 = np.array(scene.transform.TransformPoint(a1.coords))
-                        c2 = np.array(scene.transform.TransformPoint(a2.coords))
-
-                        R = tcutility.geometry.vector_align_rotmat(c1 - c2, [1, 0, 0])
-                        angles = tcutility.geometry.rotmat_to_angles(R)
-                        T.Translate(-c1)
-                        T.RotateX(angles[0] * 180 / np.pi)
-                        T.RotateY(angles[1] * 180 / np.pi)
-                        T.RotateZ(angles[2] * 180 / np.pi)
-
-
-                        c1 = np.array(scene.transform.TransformPoint(a1.coords))
-                        c2 = np.array(scene.transform.TransformPoint(a2.coords))
-                        c3 = np.array(scene.transform.TransformPoint(a3.coords))
-                        c4 = np.array(scene.transform.TransformPoint(a4.coords))
-
-                        n = np.cross(c1 - c2, c3 - c4)
-
-                        R = tcutility.geometry.vector_align_rotmat(n, [0, 1, 0])
-                        angles = tcutility.geometry.rotmat_to_angles(R)
-                        T.RotateX(angles[0] * 180 / np.pi)
-                        T.RotateY(angles[1] * 180 / np.pi)
-                        T.RotateZ(angles[2] * 180 / np.pi)
-
-                        # self.parent().renWin.Render()
+                bond_selected = len(self.parent().selected_actors) == 1 and self.parent().selected_actors[0].type == 'bond'
+                atoms2_selected = len(self.parent().selected_actors) == 2 and self.parent().selected_actors[0].type == 'atom' and self.parent().selected_actors[1].type == 'atom'
+                if atoms2_selected:
+                    actor1, actor2 = self.parent().selected_actors
+                    if event.key() == QtCore.Qt.Key_1:
+                        scene.draw_single_bond(actor1.atom, actor2.atom)
                         self.parent().Render()
-                        scene.reset_camera()
-                        scene.post_draw()
 
-                print('align!', atoms)
+                    if event.key() in [QtCore.Qt.Key_Backspace, QtCore.Qt.Key_Delete]:
+                        scene.remove_bond(actor1.atom, actor2.atom)
+                        self.parent().Render()
+
+                if bond_selected:
+                    actor = self.parent().selected_actors[0]
+                    if event.key() in [QtCore.Qt.Key_Backspace, QtCore.Qt.Key_Delete]:
+                        scene.remove_bond(*actor.atoms)
+                        self.parent().remove_highlight(actor)
+                        self.parent().Render()
+
+                if event.key() == QtCore.Qt.Key_A and event.modifiers() == QtCore.Qt.ControlModifier:
+                    atoms = [actor.atom for actor in self.parent().selected_actors if actor.type == 'atom']
+                    bonds = [actor.atoms for actor in self.parent().selected_actors if actor.type == 'bond']
+                    
+                    T = scene.transform
+                    if len(atoms) == 0:
+                        # if the user selected a single bond we align it to the x-axis
+                        if len(bonds) == 1:
+                            a1, a2 = bonds[0]
+                            c1, c2 = np.array(scene.transform.TransformPoint(a1.coords)), np.array(scene.transform.TransformPoint(a2.coords))
+                            R = tcutility.geometry.vector_align_rotmat(c1 - c2, [1, 0, 0])
+                            angles = tcutility.geometry.rotmat_to_angles(R)
+                            T.Translate(-c1)
+                            T.RotateX(angles[0] * 180 / np.pi)
+                            T.RotateY(angles[1] * 180 / np.pi)
+                            T.RotateZ(angles[2] * 180 / np.pi)
+
+                            # self.parent().renWin.Render()
+                            self.parent().Render()
+                            scene.reset_camera()
+                            scene.post_draw()
 
 
-        return False
+                        # if the user selected a single bond we align it to the x-axis
+                        if len(bonds) == 2:
+                            a1, a2, a3, a4 = [*bonds[0], *bonds[1]]
+                            c1 = np.array(scene.transform.TransformPoint(a1.coords))
+                            c2 = np.array(scene.transform.TransformPoint(a2.coords))
+
+                            R = tcutility.geometry.vector_align_rotmat(c1 - c2, [1, 0, 0])
+                            angles = tcutility.geometry.rotmat_to_angles(R)
+                            T.Translate(-c1)
+                            T.RotateX(angles[0] * 180 / np.pi)
+                            T.RotateY(angles[1] * 180 / np.pi)
+                            T.RotateZ(angles[2] * 180 / np.pi)
+
+
+                            c1 = np.array(scene.transform.TransformPoint(a1.coords))
+                            c2 = np.array(scene.transform.TransformPoint(a2.coords))
+                            c3 = np.array(scene.transform.TransformPoint(a3.coords))
+                            c4 = np.array(scene.transform.TransformPoint(a4.coords))
+
+                            n = np.cross(c1 - c2, c3 - c4)
+
+                            R = tcutility.geometry.vector_align_rotmat(n, [0, 1, 0])
+                            angles = tcutility.geometry.rotmat_to_angles(R)
+                            T.RotateX(angles[0] * 180 / np.pi)
+                            T.RotateY(angles[1] * 180 / np.pi)
+                            T.RotateZ(angles[2] * 180 / np.pi)
+
+                            # self.parent().renWin.Render()
+                            self.parent().Render()
+                            scene.reset_camera()
+                            scene.post_draw()
+
+                    print('align!', atoms)
+
+
+            return False
