@@ -48,7 +48,7 @@ class MoleculeScene:
         self.post_draw()
         img_filter = vtk.vtkWindowToImageFilter()
         img_filter.SetInput(self.parent.renWin)
-        img_filter.SetScale(2)
+        img_filter.SetScale(4)
         # img_filter.SetMagnification(2)
         img_filter.SetInputBufferTypeToRGBA()
         img_filter.ReadFrontBufferOff()
