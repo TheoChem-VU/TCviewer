@@ -17,7 +17,40 @@ from scm import plams
 import numpy as np
 
 
-class Screen(QtWidgets.QApplication):
+class Screen:
+    def __new__(cls, headless=False):
+        if headless:
+            return _HeadlessScreen()
+        else:
+            return _Screen()
+
+
+class _HeadlessScreen:
+    def __init__(self):
+        self.molview = mol_widget.MoleculeWidget(headless=True)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        # self.exec()
+        pass
+
+    def draw_molecule(self, *args, **kwargs):
+        self.molview.draw_molecule(*args, **kwargs)
+
+    def add_molscene(self):
+        return self.molview.new_scene()
+
+    def screenshot(self, *args, **kwargs):
+        self.molview.screenshot(*args, **kwargs)
+
+    def screenshots(self, *args, **kwargs):
+        self.molview.screenshots(*args, **kwargs)
+
+
+
+class _Screen(QtWidgets.QApplication):
     def __post_init__(self):
         self.window = QtWidgets.QMainWindow()
         self.window.layout = QtWidgets.QGridLayout()
@@ -74,13 +107,14 @@ class Screen(QtWidgets.QApplication):
 
 
 if __name__ == '__main__':
-    with Screen() as scr:
+    with Screen(headless=True) as scr:
         with scr.add_molscene() as scene:
             res = tcutility.results.read('/Users/yumanhordijk/PhD/Projects/RadicalAdditionASMEDA/data/DFT/TS_C_O/PyFrag_OLYP_TZ2P/frag_Substrate')
-            orbs = pyfmo.orbitals.Orbitals(res.files['adf.rkf'])
+            # orbs = pyfmo.orbitals.Orbitals(res.files['adf.rkf'])
 
-            cub = orbs.mos['LUMO'].cube_file()
-            mol = cub.molecule
+            # cub = orbs.mos['LUMO'].cube_file()
+            # mol = cub.molecule
+            mol = res.molecule.input
 
             T = tcutility.geometry.MolTransform(mol)
             T.center(1)  # center on C1
@@ -90,7 +124,7 @@ if __name__ == '__main__':
             scene.transform = T.to_vtkTransform()
 
             actor = scene.draw_molecule(mol)
-            actor = scene.draw_isosurface(cub, -0.03, [1, .5, 0])
-            actor = scene.draw_isosurface(cub,  0.03, [0, 1, 1])
+            # actor = scene.draw_isosurface(cub, -0.03, [1, .5, 0])
+            # actor = scene.draw_isosurface(cub,  0.03, [0, 1, 1])
 
         scr.screenshots(directory='screenshots')

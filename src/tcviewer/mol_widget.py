@@ -347,11 +347,121 @@ class MoleculeScene:
 
 
 
+class MoleculeWidget:
+    def __new__(self, parent=None, headless=False):
+        if headless:
+            return _HeadlessMoleculeWidget()
+        else:
+            return _MoleculeWidget(parent)
 
 
-class MoleculeWidget(QVTKRenderWindowInteractor):
+
+class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
+    def __init__(self):
+        super().__init__()
+        self.scenes = []
+
+        self.molecule_renderers = []
+        self.renWin = vtk.vtkRenderWindow()
+        self.SetRenderWindow(self.renWin)
+        # self.renWin.SetMultiSamples(4)
+        self.renWin.BordersOn()
+        self.interactor_style = vtk.vtkInteractorStyleTrackballCamera()
+        self.SetInteractorStyle(self.interactor_style)
+        self._base_ren = vtkRenderer()
+        self._base_ren.SetBackground(1, 1, 1)
+        self._base_ren.DrawOff()
+        self.renWin.AddRenderer(self._base_ren)
+
+        self.Initialize()
+        # self.Start()
+
+        self._recording_mouse = False
+        self._mouse_pos = None
+
+    def draw_molecule(self, xyz):
+        if xyz.endswith('.xyz'):
+            mol = plams.Molecule(xyz)
+            orbs = False
+        else:
+            res = tcutility.results.read(xyz)
+            orbs = pyfmo.orbitals.Orbitals(res.files['adf.rkf'])
+            mol = res.molecule.output
+
+        # disable previous scenes
+        [scene.renderer.DrawOff() for scene in self.scenes]
+
+        with self.new_scene() as scene:
+            scene.renderer.SetActiveCamera(self._base_ren.GetActiveCamera())
+            scene.draw_molecule(mol)
+            if orbs:
+                scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), 0.03, [0, 1, 1])
+                scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), -0.03, [1, 1, 0])
+        self.set_active_mol(-1)
+
+    def new_scene(self):
+        scene = MoleculeScene(self)
+        scene.renderer.SetActiveCamera(self._base_ren.GetActiveCamera())
+        [scene.renderer.DrawOff() for scene in self.scenes]
+        self.scenes.append(scene)
+        self.set_active_mol(-1)
+        return scene
+
+    def next_mol(self):
+        self.set_active_mol(self.active_scene_index + 1)
+
+    def previous_mol(self):
+        self.set_active_mol(self.active_scene_index - 1)
+
+    def set_active_mol(self, index):
+        if len(self.scenes) == 0:
+            return
+
+        self.active_scene.save_camera()
+
+        index = index % len(self.scenes)
+        [scene.renderer.DrawOff() for scene in self.scenes]
+        self.scenes[index].renderer.DrawOn()
+        self.scenes[index].load_camera()
+        self.scenes[index].renderer.Render()
+        self.renWin.Initialize()
+        self.renWin.Render()
+        self.Initialize()
+        self.Render()
+
+    @property
+    def active_scene_index(self):
+        if len(self.scenes) == 0:
+            return
+        return [i for i, scene in enumerate(self.scenes) if scene.renderer.GetDraw()][0]
+
+    @property
+    def active_scene(self):
+        return self.scenes[self.active_scene_index]
+
+    @property
+    def number_of_scenes(self):
+        return len(self.scenes)
+
+    def screenshot(self, path):
+        self.active_scene.screenshot(path)
+
+    def screenshots(self, paths=None, directory=None):
+        if paths is None and directory is None:
+            raise ValueError('You should give either the paths or directory argument')
+
+        if paths is None:
+            os.makedirs(directory, exist_ok=True)
+            paths = [os.path.join(directory, f'scene{i}.png') for i in range(self.number_of_scenes)]
+
+        for scene, path in zip(self.scenes, paths):
+            scene.screenshot(path)
+
+
+
+class _MoleculeWidget(QVTKRenderWindowInteractor):
     def __init__(self, parent):
-        super(MoleculeWidget, self).__init__()
+        super().__init__()
         self.scenes = []
 
         self.parent = parent
@@ -367,8 +477,10 @@ class MoleculeWidget(QVTKRenderWindowInteractor):
         self._base_ren.DrawOff()
         self.renWin.AddRenderer(self._base_ren)
         self.SetRenderWindow(self.renWin)
+
         self.installEventFilter(MoleculeWidgetKeyPressFilter(parent=self))
         self.setAcceptDrops(True)
+
         self.Initialize()
         self.Start()
 
@@ -376,7 +488,6 @@ class MoleculeWidget(QVTKRenderWindowInteractor):
         self.selected_actor_highlights = {}
         self.picker = vtk.vtkPropPicker()
         self.AddObserver('EndInteractionEvent', self.highlight_observer)
-        # self.GetInteractorStyle().AddObserver(vtk.vtkCommand.LeftButtonReleaseEvent, self.highlight_observer)
         self.AddObserver('LeftButtonPressEvent', self.record_mouse_position)
 
         self._recording_mouse = False
@@ -579,7 +690,7 @@ class MoleculeWidget(QVTKRenderWindowInteractor):
             raise ValueError('You should give either the paths or directory argument')
 
         if paths is None:
-            os.makedirs(directory, exist_ok=True)
+            os.makedirs(os.path.abspath(directory), exist_ok=True)
             paths = [os.path.join(directory, f'scene{i}.png') for i in range(self.number_of_scenes)]
 
         for scene, path in zip(self.scenes, paths):
