@@ -241,6 +241,27 @@ class MoleculeScene:
 
         self.renderer.AddActor(actor)
 
+
+    def draw_axes(self):
+        for v in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
+            lineSource = vtkLineSource()
+            lineSource.SetPoint1((0, 0, 0))
+            lineSource.SetPoint2(v)
+
+            tubeFilter = vtkTubeFilter()
+            tubeFilter.source = lineSource
+            tubeFilter.SetInputConnection(lineSource.GetOutputPort())
+            tubeFilter.SetRadius(0.01)
+            tubeFilter.SetNumberOfSides(20)
+
+            tubeMapper = vtkPolyDataMapper()
+            tubeMapper.SetInputConnection(tubeFilter.GetOutputPort())
+
+            tubeActor = vtkActor()
+            tubeActor.SetMapper(tubeMapper)
+            tubeActor.GetProperty().SetColor([255*i for i in v])
+            # tubeActor.SetUserTransform(self.transform)
+            self.renderer.AddActor(tubeActor)
     def remove_angle(self, a1, a2, a3):
         for act in self.renderer.GetActors():
             if not hasattr(act, 'type') or act.type != 'angle':
