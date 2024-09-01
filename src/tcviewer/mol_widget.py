@@ -377,7 +377,7 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
         self.renWin.AddRenderer(self._base_ren)
 
         self.Initialize()
-        # self.Start()
+        self.Start()
 
         self._recording_mouse = False
         self._mouse_pos = None
