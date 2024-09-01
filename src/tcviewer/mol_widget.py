@@ -49,7 +49,6 @@ class MoleculeScene:
         img_filter = vtk.vtkWindowToImageFilter()
         img_filter.SetInput(self.parent.renWin)
         img_filter.SetScale(4)
-        # img_filter.SetMagnification(2)
         img_filter.SetInputBufferTypeToRGBA()
         img_filter.ReadFrontBufferOff()
         img_filter.Update()
@@ -84,14 +83,9 @@ class MoleculeScene:
         p = camera.GetPosition()
         plen = np.linalg.norm(p)
         camera.SetPosition([0, 0, plen])
-        print(camera.GetPosition())
-        # camera.SetPosition(self.cam_settings['position'])
-        # camera.SetFocalPoint([0, 0, 0])
         camera.SetFocalPoint(self.cam_settings['focal point'])
         camera.SetViewUp([0, 1, 0])
-        # camera.SetDistance(self.cam_settings['distance'])
         camera.SetClippingRange(self.cam_settings['clipping range'])
-        # print(camera.GetViewUp())
         self.save_camera()
 
     def post_draw(self):
@@ -104,18 +98,10 @@ class MoleculeScene:
             pos = follower['orig_pos']
             follower['actor'].SetPosition(self.transform.TransformPoint(pos))
         
-        # for actor in self.renderer.GetActors():
-        #     if actor in [follower['actor'] for follower in self.camera_followers]:
-        #         continue
-        #     actor.SetUserTransform(self.transform)
-
         self.renderer.ResetCamera()
         self.parent.renWin.Render()
         self.parent.Initialize()
-        self.parent.Start()
         self.save_camera()
-
-        # self.post_draw = lambda: ...
 
     def draw_molecule(self, mol):
         for atom in mol:
@@ -143,7 +129,6 @@ class MoleculeScene:
             circleActor.GetProperty().SetColor([0, 0, 0])
             circleActor.PickableOff()
             circleActor.type = 'follower'
-            # circleActor.SetUserTransform(self.transform)
 
             self.camera_followers.append({'actor': circleActor, 'rotatex': rotatex, 'rotatey': rotatey, 'cumrotatex': 0, 'cumrotatey': 0, 'orig_pos': atom.coords})
             self.renderer.AddActor(circleActor)
@@ -361,21 +346,7 @@ class MoleculeScene:
             self.draw_angle(a1, a2, a3)
 
 
-        # angle = tcutility.geometry.parameter([c1, c2, c3], 0, 1, 2)
 
-        # text = vtk.vtkVectorText()
-        # text.SetText(f'{angle: .1f}°')
-        # textMapper = vtk.vtkPolyDataMapper()
-        # textMapper.SetInputConnection(text.GetOutputPort())
-        # textActor = vtk.vtkFollower()
-        # textActor.SetMapper(textMapper)
-        # # textActor.SetUserTransform(self.transform)
-        # textActor.SetCamera(self.renderer.GetActiveCamera())
-        # textActor.SetScale(0.2, 0.2, 0.2)
-        # textActor.SetPosition(self.transform.TransformPoint(c2 + (u + v) / 1.5))
-        # # textActor.SetActiveCamera(self._base_ren.GetActiveCamera())
-        # self.camera_followers.append({'actor': textActor, 'rotatex': 0, 'rotatey': 0})
-        # self.renderer.AddActor(textActor)
 
 
 class MoleculeWidget(QVTKRenderWindowInteractor):
