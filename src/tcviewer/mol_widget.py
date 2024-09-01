@@ -1,4 +1,8 @@
-from PySide6 import *
+try:
+    from PySide6 import *
+    has_qt = True
+except ImportError:
+    has_qt = False
 
 import vtk
 import vtkmodules.vtkRenderingOpenGL2
