@@ -262,6 +262,52 @@ class MoleculeScene:
             tubeActor.GetProperty().SetColor([255*i for i in v])
             # tubeActor.SetUserTransform(self.transform)
             self.renderer.AddActor(tubeActor)
+
+    def draw_contour_lines(self, grid, isovalue=0, transform=None):
+        depthArray = numpy_to_vtk(abs(grid.values).reshape(*grid.shape).ravel(order='F'), deep=True, array_type=vtk.VTK_DOUBLE)
+        imdata = vtk.vtkImageData()
+        imdata.SetDimensions(grid.shape)
+        imdata.SetSpacing(grid.spacing)
+        imdata.SetOrigin(grid.origin)
+        imdata.GetPointData().SetScalars(depthArray)
+
+        # transform = vtk.vtkTransform()
+        planesource = vtk.vtkPlaneSource()
+        max_size = 50
+
+        planesource.SetResolution(2000, 2000)
+        planesource.SetPoint1((max_size * 2, 0, 0))
+        planesource.SetPoint2((0, 0, max_size * 2))
+        planesource.SetOrigin((-max_size, 0, -max_size))
+        # planesource.SetTransform(transform)
+
+        filt = vtk.vtkTransformPolyDataFilter()
+        filt.SetInputConnection(planesource.GetOutputPort())
+        filt.SetTransform(transform)
+
+        appendf = vtk.vtkAppendPolyData()
+        appendf.AddInputConnection(filt.GetOutputPort())
+
+        probe = vtk.vtkProbeFilter()
+        probe.SetSourceData(imdata)
+        probe.SetInputConnection(appendf.GetOutputPort())
+
+        contour = vtk.vtkContourFilter()
+        contour.SetInputConnection(probe.GetOutputPort())
+        n = 20
+        contour.GenerateValues(n, (0.001, 0.4))
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(contour.GetOutputPort())
+        mapper.SetScalarRange(imdata.GetScalarRange())
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetLineWidth(3)
+        actor.SetUserTransform(self.transform)
+
+        self.renderer.AddActor(actor)
+
     def remove_angle(self, a1, a2, a3):
         for act in self.renderer.GetActors():
             if not hasattr(act, 'type') or act.type != 'angle':
