@@ -96,6 +96,7 @@ if has_qt:
         def __exit__(self, *args):
             self.window.show()
             self.exec()
+            self.shutdown()
 
         def draw_molecule(self, *args, **kwargs):
             self.molview.draw_molecule(*args, **kwargs)
