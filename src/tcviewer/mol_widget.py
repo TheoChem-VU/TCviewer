@@ -761,6 +761,8 @@ if has_qt:
 
                 bond_selected = len(self.parent().selected_actors) == 1 and self.parent().selected_actors[0].type == 'bond'
                 atoms2_selected = len(self.parent().selected_actors) == 2 and self.parent().selected_actors[0].type == 'atom' and self.parent().selected_actors[1].type == 'atom'
+                atom_and_bond_selected = len(self.parent().selected_actors) == 2 and any(actor.type == 'bond' for actor in self.parent().selected_actors) and any(actor.type == 'atom' for actor in self.parent().selected_actors)
+                print(bond_selected, atoms2_selected, atom_and_bond_selected)
                 if atoms2_selected:
                     actor1, actor2 = self.parent().selected_actors
                     if event.key() == QtCore.Qt.Key_1:
@@ -785,6 +787,16 @@ if has_qt:
                         self.parent().remove_highlight(actor)
                         self.parent().Render()
 
+
+                if atom_and_bond_selected:
+                    if event.key() == QtCore.Qt.Key_I:
+                        actor1, actor2 = self.parent().selected_actors
+                        if actor1.type != 'bond':
+                            actor1, actor2 = actor2, actor1
+                        p1, p2 = actor1.atoms
+                        scene.draw_interaction_bond((np.array(p1) + np.array(p2))/2, actor2.atom.coords)
+                        self.parent().Render()
+
                 if event.key() == QtCore.Qt.Key_A and event.modifiers() == QtCore.Qt.ControlModifier:
                     atoms = [actor.atom for actor in self.parent().selected_actors if actor.type == 'atom']
                     bonds = [actor.atoms for actor in self.parent().selected_actors if actor.type == 'bond']
@@ -806,7 +818,6 @@ if has_qt:
                             self.parent().Render()
                             scene.reset_camera()
                             scene.post_draw()
-
 
                         # if the user selected a single bond we align it to the x-axis
                         if len(bonds) == 2:
