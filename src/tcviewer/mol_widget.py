@@ -10,7 +10,7 @@ from vtkmodules.util.numpy_support import numpy_to_vtk
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtkmodules.vtkCommonColor import vtkNamedColors
 from vtkmodules.vtkFiltersSources import vtkConeSource
-from vtkmodules.vtkRenderingCore import vtkActor, vtkAssembly, vtkFollower, vtkPolyDataMapper, vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor, vtkLight, vtkCamera
+from vtkmodules.vtkRenderingCore import vtkTextActor, vtkActor, vtkAssembly, vtkFollower, vtkPolyDataMapper, vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor, vtkLight, vtkCamera
 from vtkmodules.vtkFiltersSources import vtkLineSource, vtkArcSource, vtkSphereSource, vtkRegularPolygonSource
 from vtkmodules.vtkFiltersCore import vtkTubeFilter
 
@@ -108,12 +108,14 @@ class MoleculeScene:
         self.save_camera()
 
     def draw_molecule(self, mol):
+        self.mol = mol
+
         for atom in mol:
             self.draw_atom(atom)
 
         mol.guess_bonds()
         for bond in mol.bonds:
-            self.draw_single_bond(bond.atom1, bond.atom2)
+            self.draw_single_bond(bond.atom1.coords, bond.atom2.coords)
 
     def draw_atom(self, atom):
         def draw_disk(rotatex, rotatey):
@@ -161,8 +163,8 @@ class MoleculeScene:
             draw_disk(-65, 0)
             draw_disk(0, -65)
 
-    def draw_single_bond(self, a1, a2):
-        p1, p2 = np.array(a1.coords), np.array(a2.coords)
+    def draw_single_bond(self, p1, p2):
+        p1, p2 = np.array(p1), np.array(p2)
         lineSource = vtkLineSource()
         lineSource.SetPoint1(p1)
         lineSource.SetPoint2(p2)
@@ -171,6 +173,7 @@ class MoleculeScene:
         tubeFilter.source = lineSource
         tubeFilter.SetInputConnection(lineSource.GetOutputPort())
         tubeFilter.SetRadius(settings['bond']['radius'])
+        tubeFilter.SetCapping(True)
         tubeFilter.SetNumberOfSides(20)
 
         tubeMapper = vtkPolyDataMapper()
@@ -180,19 +183,38 @@ class MoleculeScene:
         tubeActor.SetMapper(tubeMapper)
         tubeActor.GetProperty().SetColor(settings['bond']['color'])
         tubeActor.type = 'bond'
-        tubeActor.atoms = a1, a2
+        # a1, a2 = [atom for atom in self.mol if atom.coords == p1][0], [atom for atom in self.mol if atom.coords == p2][0]
+        tubeActor.atoms = p1.tolist(), p2.tolist()
         tubeActor.SetUserTransform(self.transform)
         self.renderer.AddActor(tubeActor)
+        return tubeActor
 
-    def remove_bond(self, a1, a2):
+
+    def draw_interaction_bond(self, p1, p2, spacing=.3):
+        p1, p2 = np.array(p1), np.array(p2)
+        l = np.linalg.norm(p1 - p2)
+        direction = (p2 - p1) / l
+        n_segments = int(l // spacing)
+        # print(n_segments)
+        margin = (l - n_segments * spacing) / 2
+        for i in range(n_segments):
+            pi = p1 + margin * direction + spacing * direction * i
+            actor = self.draw_single_bond(pi, pi + spacing / 2 * direction)
+            actor.atoms = p1.tolist(), p2.tolist()
+            actor.type = 'intbond'
+
+
+    def remove_bond(self, p1, p2):
         for actor in self.renderer.GetActors():
             if not hasattr(actor, 'type'):
                 continue
 
-            if actor.type != 'bond':
+            if actor.type not in ['bond', 'intbond']:
                 continue
 
-            if a1 in actor.atoms and a2 in actor.atoms:
+            print(actor.atoms, p1, p2)
+
+            if p1 in actor.atoms and p2 in actor.atoms:
                 self.renderer.RemoveActor(actor)
 
     def draw_isosurface(self, grid, isovalue=0, color=(1, 1, 0)):
@@ -348,6 +370,16 @@ class MoleculeScene:
                 break
         else:
             self.draw_angle(a1, a2, a3)
+
+    def draw_text(self, text: str, location: str = 'bottom right', fontsize=24, color=(255, 255, 255)):
+          textActor = vtkTextActor()
+          textActor.SetInput(text)
+          textActor.SetPosition(50, 50)
+          textActor.UseBorderAlignOff()
+          textActor.GetTextProperty().SetFontSize(fontsize)
+          textActor.GetTextProperty().SetColor(color)
+          self.renderer.AddActor2D(textActor)
+          
 
 
 
@@ -565,7 +597,7 @@ if has_qt:
                 radius = actor.GetMapper().GetInputConnection(0, 0).GetProducer().GetRadius()
                 highlight.SetRadius(radius)
 
-            elif actor.type == 'bond':
+            elif actor.type in ['bond', 'intbond']:
                 tube = actor.GetMapper().GetInputConnection(0, 0).GetProducer()
                 source = tube.source
                 line = vtkLineSource()
@@ -617,13 +649,16 @@ if has_qt:
                 self.add_highlight(actor)
 
         def draw_molecule(self, xyz):
-            if xyz.endswith('.xyz'):
-                mol = plams.Molecule(xyz)
-                orbs = False
-            else:
-                res = tcutility.results.read(xyz)
-                orbs = pyfmo.orbitals.Orbitals(res.files['adf.rkf'])
-                mol = res.molecule.output
+            if isinstance(xyz, str):
+                if xyz.endswith('.xyz'):
+                    mol = plams.Molecule(xyz)
+                    orbs = False
+                else:
+                    res = tcutility.results.read(xyz)
+                    orbs = pyfmo.orbitals.Orbitals(res.files['adf.rkf'])
+                    mol = res.molecule.output
+            elif isinstance(xyz, plams.Molecule):
+                mol = xyz
 
             # disable previous scenes
             [scene.renderer.DrawOff() for scene in self.scenes]
@@ -635,6 +670,7 @@ if has_qt:
                     scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), 0.03, [0, 1, 1])
                     scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), -0.03, [1, 1, 0])
             self.set_active_mol(-1)
+
 
         def new_scene(self):
             scene = MoleculeScene(self)
@@ -728,16 +764,23 @@ if has_qt:
                 if atoms2_selected:
                     actor1, actor2 = self.parent().selected_actors
                     if event.key() == QtCore.Qt.Key_1:
-                        scene.draw_single_bond(actor1.atom, actor2.atom)
+                        scene.draw_single_bond(actor1.atom.coords, actor2.atom.coords)
                         self.parent().Render()
 
                     if event.key() in [QtCore.Qt.Key_Backspace, QtCore.Qt.Key_Delete]:
-                        scene.remove_bond(actor1.atom, actor2.atom)
+                        scene.remove_bond(actor1.atom.coords, actor2.atom.coords)
                         self.parent().Render()
+
+                    if event.key() == QtCore.Qt.Key_I:
+                        scene.draw_interaction_bond(actor1.atom.coords, actor2.atom.coords)
+                        self.parent().Render()
+                        # scene.dr
+
 
                 if bond_selected:
                     actor = self.parent().selected_actors[0]
                     if event.key() in [QtCore.Qt.Key_Backspace, QtCore.Qt.Key_Delete]:
+                        print(actor.atoms)
                         scene.remove_bond(*actor.atoms)
                         self.parent().remove_highlight(actor)
                         self.parent().Render()
