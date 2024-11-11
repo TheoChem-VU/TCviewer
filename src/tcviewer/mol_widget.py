@@ -45,6 +45,7 @@ class MoleculeScene:
         return self
 
     def __exit__(self, *args):
+        self.reset_camera()
         self.post_draw()
         pass
 
@@ -117,7 +118,7 @@ class MoleculeScene:
         for bond in mol.bonds:
             self.draw_single_bond(bond.atom1.coords, bond.atom2.coords)
 
-    def draw_atom(self, atom):
+    def draw_atom(self, atom, color=None):
         def draw_disk(rotatex, rotatey):
             circle = vtkRegularPolygonSource()
             circle.SetCenter([0, 0, 0])
@@ -152,7 +153,9 @@ class MoleculeScene:
         sphereActor.GetProperty().SetDiffuse(0.5)
         sphereActor.GetProperty().SetSpecular(0.5)
         sphereActor.GetProperty().SetSpecularPower(5.0)
-        sphereActor.GetProperty().SetColor([x/255 for x in tcutility.data.atom.color(atom.symbol)])
+        if color is None:
+            color = [x/255 for x in tcutility.data.atom.color(atom.symbol)]
+        sphereActor.GetProperty().SetColor(color)
         sphereActor.type = 'atom'
         sphereActor.atom = atom
         sphereActor.SetUserTransform(self.transform)
@@ -759,10 +762,13 @@ if has_qt:
                         scene.toggle_angle(*atoms)
                         scene.post_draw()
 
+                if event.key() == QtCore.Qt.Key_S:
+                    filename, t = QtWidgets.QFileDialog.getSaveFileName()
+                    scene.screenshot(filename.removesuffix('.png') + '.png')
+
                 bond_selected = len(self.parent().selected_actors) == 1 and self.parent().selected_actors[0].type == 'bond'
                 atoms2_selected = len(self.parent().selected_actors) == 2 and self.parent().selected_actors[0].type == 'atom' and self.parent().selected_actors[1].type == 'atom'
                 atom_and_bond_selected = len(self.parent().selected_actors) == 2 and any(actor.type == 'bond' for actor in self.parent().selected_actors) and any(actor.type == 'atom' for actor in self.parent().selected_actors)
-                print(bond_selected, atoms2_selected, atom_and_bond_selected)
                 if atoms2_selected:
                     actor1, actor2 = self.parent().selected_actors
                     if event.key() == QtCore.Qt.Key_1:
