@@ -70,7 +70,8 @@ class MoleculeScene:
         self.cam_settings['focal point'] = camera.GetFocalPoint()
         self.cam_settings['view up'] = camera.GetViewUp()
         self.cam_settings['distance'] = camera.GetDistance()
-        self.cam_settings['clipping range'] = camera.GetClippingRange()
+        # self.cam_settings['clipping range'] = camera.GetClippingRange()
+        self.cam_settings['clipping range'] = (0.1, 1000)
         self.cam_settings['orientation'] = camera.GetOrientation()
 
     def load_camera(self):
