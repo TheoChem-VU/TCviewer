@@ -56,6 +56,7 @@ class _HeadlessScreen:
 if has_qt:
     class _Screen(QtWidgets.QApplication):
         def __post_init__(self):
+            self.use_parallel_projection = False
             self.window = QtWidgets.QMainWindow()
             self.window.layout = QtWidgets.QGridLayout()
             grid_widget = QtWidgets.QWidget()
@@ -109,6 +110,12 @@ if has_qt:
 
         def screenshots(self, *args, **kwargs):
             self.molview.screenshots(*args, **kwargs)
+
+        def use_perspective(self):
+            self.use_parallel_projection = False
+
+        def use_parallel(self):
+            self.use_parallel_projection = True
 
 
 if __name__ == '__main__':

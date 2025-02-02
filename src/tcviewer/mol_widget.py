@@ -77,6 +77,7 @@ class MoleculeScene:
     def load_camera(self):
         self.renderer.ResetCamera()
         camera = self.renderer.GetActiveCamera()
+        camera.SetParallelProjection(self.parent.parent.use_parallel_projection)
         camera.SetPosition(self.cam_settings['position'])
         camera.SetFocalPoint(self.cam_settings['focal point'])
         camera.SetViewUp(self.cam_settings['view up'])
