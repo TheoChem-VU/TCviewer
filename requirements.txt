@@ -1,6 +1,6 @@
 GitPython
 numpy
-open3d
+vtk
 scikit-image
 plams
 TCutility
