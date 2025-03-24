@@ -32,6 +32,7 @@ class Screen:
 class _HeadlessScreen:
     def __init__(self):
         self.molview = mol_widget.MoleculeWidget(headless=True)
+        self.use_parallel_projection = False
 
     def __enter__(self):
         return self
@@ -53,6 +54,7 @@ class _HeadlessScreen:
         self.molview.screenshots(*args, **kwargs)
 
 
+
 if has_qt:
     class _Screen(QtWidgets.QApplication):
         def __post_init__(self):
@@ -63,6 +65,10 @@ if has_qt:
             grid_widget.setLayout(self.window.layout)
             self.window.setCentralWidget(grid_widget)
             self.window.setWindowTitle("TCViewer 2.0")
+            
+            # set up the settings screen
+            self.settings = settings.DefaultSettings()
+            self.window.layout.addWidget(self.settings, 0, 3, 2, 1)
 
             # set up the molecule screen
             self.molview = mol_widget.MoleculeWidget(self)
@@ -87,8 +93,6 @@ if has_qt:
             self.window.layout.setColumnStretch(1, 1)
             self.window.layout.setColumnStretch(2, 0)
 
-            self.settings = settings.DefaultSettings()
-            self.window.layout.addWidget(self.settings, 0, 3, 2, 1)
 
         def __enter__(self):
             self.__post_init__()
@@ -110,13 +114,6 @@ if has_qt:
 
         def screenshots(self, *args, **kwargs):
             self.molview.screenshots(*args, **kwargs)
-
-        def use_perspective(self):
-            self.use_parallel_projection = False
-
-        def use_parallel(self):
-            self.use_parallel_projection = True
-
 
 if __name__ == '__main__':
     with Screen(headless=False) as scr:

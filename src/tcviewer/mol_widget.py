@@ -30,6 +30,7 @@ class MoleculeScene:
         self.renderer.SetBackground([1, 1, 1])
         self.renderer.UseFXAAOn()
         self.parent.renWin.AddRenderer(self.renderer)
+        self.use_parallel_projection = False
 
         light = vtkLight()
         light.SetPosition(-1.5, 2, 2)
@@ -71,13 +72,14 @@ class MoleculeScene:
         self.cam_settings['view up'] = camera.GetViewUp()
         self.cam_settings['distance'] = camera.GetDistance()
         # self.cam_settings['clipping range'] = camera.GetClippingRange()
+        self.cam_settings['parallel_projection'] = self.use_parallel_projection
         self.cam_settings['clipping range'] = (0.1, 1000)
         self.cam_settings['orientation'] = camera.GetOrientation()
 
     def load_camera(self):
         self.renderer.ResetCamera()
         camera = self.renderer.GetActiveCamera()
-        camera.SetParallelProjection(self.parent.parent.use_parallel_projection)
+        camera.SetParallelProjection(self.cam_settings['parallel_projection'])
         camera.SetPosition(self.cam_settings['position'])
         camera.SetFocalPoint(self.cam_settings['focal point'])
         camera.SetViewUp(self.cam_settings['view up'])
@@ -137,7 +139,7 @@ class MoleculeScene:
             circleActor.SetMapper(circleMapper)
             circleActor.GetProperty().SetColor([0, 0, 0])
             circleActor.PickableOff()
-            circleActor.type = 'follower'
+            circleActor.type = f'quadrant_{atom.symbol}'
 
             self.camera_followers.append({'actor': circleActor, 'rotatex': rotatex, 'rotatey': rotatey, 'cumrotatex': 0, 'cumrotatey': 0, 'orig_pos': atom.coords})
             self.renderer.AddActor(circleActor)
@@ -158,7 +160,7 @@ class MoleculeScene:
         if color is None:
             color = [x/255 for x in tcutility.data.atom.color(atom.symbol)]
         sphereActor.GetProperty().SetColor(color)
-        sphereActor.type = 'atom'
+        sphereActor.type = f'atom_{atom.symbol}'
         sphereActor.atom = atom
         sphereActor.SetUserTransform(self.transform)
         self.renderer.AddActor(sphereActor)
@@ -222,7 +224,7 @@ class MoleculeScene:
             if p1 in actor.atoms and p2 in actor.atoms:
                 self.renderer.RemoveActor(actor)
 
-    def draw_isosurface(self, grid, isovalue=0, color=(1, 1, 0)):
+    def draw_isosurface(self, grid, isovalue=None, color=(1, 1, 0), opacity=.5):
         # vtkImageData is the vtk image volume type
         # this is where the conversion happens
         depthArray = numpy_to_vtk(grid.values.reshape(*grid.shape).ravel(order='F'), deep=True, array_type=vtk.VTK_DOUBLE)
@@ -245,18 +247,26 @@ class MoleculeScene:
         actor = vtkActor()
         actor.SetMapper(mapper)
         actor.GetProperty().SetColor(*color)
-        actor.GetProperty().SetOpacity(.5)
-        actor.GetProperty().SetAmbient(.2)
+        actor.GetProperty().SetOpacity(opacity)
+        actor.GetProperty().SetAmbient(.3)
         actor.GetProperty().SetDiffuse(1)
-        actor.GetProperty().SetSpecular(5)
+        actor.GetProperty().SetSpecular(1.0)
         actor.GetProperty().SetSpecularPower(70)
         actor.GetProperty().SetSpecularColor((1, 1, 1))
         actor.PickableOff()
-        actor.type = 'surface'
+        if isovalue < 0:
+            actor.type = 'surfacem'
+        else:
+            actor.type = 'surfacep'
         actor.SetUserTransform(self.transform)
 
         self.renderer.AddActor(actor)
 
+    def draw_dual_isosurface(self, grid, isovalue=None, colorm=(1, 0, 0), colorp=(0, 0, 1), opacity=.5):
+        if isovalue is None:
+            isovalue = self.parent.parent.settings.get_value('Iso Surface', 'Iso Value')
+        self.draw_isosurface(grid, isovalue,  color=colorp, opacity=opacity)
+        self.draw_isosurface(grid, -isovalue, color=colorm, opacity=opacity)
 
     def draw_axes(self):
         for v in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
@@ -385,8 +395,16 @@ class MoleculeScene:
           textActor.GetTextProperty().SetColor(color)
           self.renderer.AddActor2D(textActor)
           
+    def use_perspective(self):
+        self.use_parallel_projection = False
+        camera = self.renderer.GetActiveCamera()
+        camera.SetParallelProjection(False)
 
-
+    def use_parallel(self):
+        self.use_parallel_projection = True
+        camera = self.renderer.GetActiveCamera()
+        camera.SetParallelProjection(True)
+        
 
 class MoleculeWidget:
     def __new__(self, parent=None, headless=False):
@@ -407,6 +425,7 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
         # self.renWin.SetMultiSamples(4)
         self.renWin.BordersOn()
         self.interactor_style = vtk.vtkInteractorStyleTrackballCamera()
+        # self.GetActiveCamera()
         self.SetInteractorStyle(self.interactor_style)
         self._base_ren = vtkRenderer()
         self._base_ren.SetBackground(1, 1, 1)
@@ -505,6 +524,9 @@ if has_qt:
             self.scenes = []
 
             self.parent = parent
+            self.parent.settings.tabs['Atom'].connect(self._update_atoms)
+            self.parent.settings.tabs['Bond'].connect(self._update_bonds)
+            self.parent.settings.tabs['Iso Surface'].connect(self._update_isosurfaces)
 
             self.molecule_renderers = []
             self.renWin = self.GetRenderWindow()
@@ -593,7 +615,7 @@ if has_qt:
         def add_highlight(self, actor):
             ren = self.active_scene.renderer
             self.selected_actors.append(actor)
-            if actor.type == 'atom':
+            if actor.type.startswith('atom'):
                 actor.SetScale([0.75, 0.75, 0.75])
                 highlight = vtkSphereSource()
                 highlight.SetPhiResolution(35)
@@ -676,7 +698,6 @@ if has_qt:
                     scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), -0.03, [1, 1, 0])
             self.set_active_mol(-1)
 
-
         def new_scene(self):
             scene = MoleculeScene(self)
             scene.renderer.SetActiveCamera(self._base_ren.GetActiveCamera())
@@ -740,7 +761,82 @@ if has_qt:
             for scene, path in zip(self.scenes, paths):
                 scene.screenshot(path)
 
+        def _update_isosurfaces(self):
+            opacity = self.parent.settings.get_value('Iso Surface', 'Opacity')
+            shininess = self.parent.settings.get_value('Iso Surface', 'Shininess')
 
+            for scene in self.scenes:
+                actors = scene.renderer.GetActors()
+                for actor in actors:
+                    if not hasattr(actor, 'type'):
+                        continue
+                    if not actor.type.startswith('surface'):
+                        continue
+
+                    isovalue = self.parent.settings.get_value('Iso Surface', 'Iso Value')
+                    if actor.type == 'surfacem':
+                        isovalue *= -1
+
+                    actor.GetMapper().GetInputConnection(0, 0).GetProducer().SetValue(0, isovalue)
+                    actor.GetProperty().SetOpacity(opacity)
+                    actor.GetProperty().SetSpecular(shininess)
+                    actor.GetMapper().GetInputConnection(0, 0).GetProducer().Update()
+            self.renWin.Render()
+
+        def _update_atoms(self):
+            draw_quadrants = self.parent.settings.get_value('Atom', 'Draw Quadrants')
+            quadrant_width = self.parent.settings.get_value('Atom', 'Quadrant Width')
+            size_ratio = self.parent.settings.get_value('Atom', 'Size Ratio')
+
+            for scene in self.scenes:
+                actors = scene.renderer.GetActors()
+                for actor in actors:
+                    if not hasattr(actor, 'type'):
+                        continue
+                    if not any(actor.type.startswith(typ) for typ in ['atom', 'quadrant']):
+                        continue
+
+                    symbol = actor.type.split('_')[1]
+                    if actor.type.startswith('atom'):
+                        radius = tcutility.data.atom.radius(symbol) * size_ratio
+                    else:
+                        radius = tcutility.data.atom.radius(symbol) * size_ratio + quadrant_width
+                    actor.GetMapper().GetInputConnection(0, 0).GetProducer().SetRadius(radius)
+
+                    if actor.type.startswith('quadrant'):
+                        if draw_quadrants and quadrant_width > 0.0:
+                            actor.VisibilityOn()
+                        else:
+                            actor.VisibilityOff()
+
+            self.renWin.Render()
+
+                # tab.add_spinbox('Radius', 0.08, minimum=0, decimals=3, suffix_text='Å')
+                # tab.add_color('Color', (0, 0, 0))
+                # tab.add_spinbox('Dashed Bond Radius', default=0.04, minimum=0, decimals=3, suffix_text='Å')
+
+        def _update_bonds(self):
+            radius = self.parent.settings.get_value('Bond', 'Radius')
+            color = self.parent.settings.get_value('Bond', 'Color')
+            dashbond_radius = self.parent.settings.get_value('Bond', 'Dashed Bond Radius')
+
+            for scene in self.scenes:
+                actors = scene.renderer.GetActors()
+                for actor in actors:
+                    if not hasattr(actor, 'type'):
+                        continue
+                    if not any(actor.type.startswith(typ) for typ in ['bond', 'intbond']):
+                        continue
+
+                    if actor.type == 'bond':
+                        rad = radius
+                    else:
+                        rad = dashbond_radius
+                    actor.GetMapper().GetInputConnection(0, 0).GetProducer().SetRadius(rad)
+                    actor.GetProperty().SetColor(color)
+
+
+            self.renWin.Render()
 
     class MoleculeWidgetKeyPressFilter(QtCore.QObject):
         def eventFilter(self, widget, event):
