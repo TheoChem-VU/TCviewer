@@ -4,3 +4,4 @@ vtk
 scikit-image
 plams
 TCutility
+PySide6

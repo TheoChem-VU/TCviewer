@@ -855,7 +855,7 @@ if has_qt:
                     scene.post_draw()
 
                 if event.key() == QtCore.Qt.Key_P:
-                    atoms = [actor.atom for actor in self.parent().selected_actors if actor.type == 'atom']
+                    atoms = [actor.atom for actor in self.parent().selected_actors if actor.type.startswith('atom')]
                     if len(atoms) == 3:
                         scene.toggle_angle(*atoms)
                         scene.post_draw()
@@ -865,8 +865,8 @@ if has_qt:
                     scene.screenshot(filename.removesuffix('.png') + '.png')
 
                 bond_selected = len(self.parent().selected_actors) == 1 and self.parent().selected_actors[0].type == 'bond'
-                atoms2_selected = len(self.parent().selected_actors) == 2 and self.parent().selected_actors[0].type == 'atom' and self.parent().selected_actors[1].type == 'atom'
-                atom_and_bond_selected = len(self.parent().selected_actors) == 2 and any(actor.type == 'bond' for actor in self.parent().selected_actors) and any(actor.type == 'atom' for actor in self.parent().selected_actors)
+                atoms2_selected = len(self.parent().selected_actors) == 2 and self.parent().selected_actors[0].type.startswith('atom') and self.parent().selected_actors[1].type.startswith('atom')
+                atom_and_bond_selected = len(self.parent().selected_actors) == 2 and any(actor.type == 'bond' for actor in self.parent().selected_actors) and any(actor.type.startswith('atom') for actor in self.parent().selected_actors)
                 if atoms2_selected:
                     actor1, actor2 = self.parent().selected_actors
                     if event.key() == QtCore.Qt.Key_1:
