@@ -506,10 +506,10 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
     def number_of_scenes(self):
         return len(self.scenes)
 
-    def screenshot(self, path):
-        self.active_scene.screenshot(path)
+    def screenshot(self, path, scale=4):
+        self.active_scene.screenshot(path, scale=scale)
 
-    def screenshots(self, paths=None, directory=None):
+    def screenshots(self, paths=None, directory=None, scale=4):
         if paths is None and directory is None:
             raise ValueError('You should give either the paths or directory argument')
 
@@ -518,7 +518,7 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
             paths = [os.path.join(directory, f'scene{i}.png') for i in range(self.number_of_scenes)]
 
         for scene, path in zip(self.scenes, paths):
-            scene.screenshot(path)
+            scene.screenshot(path, scale=scale)
 
 
 if has_qt:
@@ -751,10 +751,10 @@ if has_qt:
         def number_of_scenes(self):
             return len(self.scenes)
 
-        def screenshot(self, path):
-            self.active_scene.screenshot(path)
+        def screenshot(self, path, scale=4):
+            self.active_scene.screenshot(path, scale=scale)
 
-        def screenshots(self, paths=None, directory=None):
+        def screenshots(self, paths=None, directory=None, scale=4):
             if paths is None and directory is None:
                 raise ValueError('You should give either the paths or directory argument')
 
@@ -763,7 +763,7 @@ if has_qt:
                 paths = [os.path.join(directory, f'scene{i}.png') for i in range(self.number_of_scenes)]
 
             for scene, path in zip(self.scenes, paths):
-                scene.screenshot(path)
+                scene.screenshot(path, scale=scale)
 
         def _update_isosurfaces(self):
             opacity = self.parent.settings.get_value('Iso Surface', 'Opacity')
