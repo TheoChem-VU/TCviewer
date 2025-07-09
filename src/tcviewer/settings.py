@@ -180,8 +180,8 @@ if has_qt:
 
 			with self.add_tab('Iso Surface') as tab:
 				tab.add_spinbox('Iso Value', 0.03, minimum=0, maximum=1, decimals=3)
-				tab.add_spinbox('Opacity', 0.3, minimum=0, maximum=1, decimals=2, step=.1)
-				tab.add_spinbox('Shininess', 1.0, minimum=0, maximum=1, decimals=2, step=.1)
+				tab.add_spinbox('Opacity', 0.15, minimum=0, maximum=1, decimals=2, step=.1)
+				tab.add_spinbox('Shininess', 0.0, minimum=0, maximum=1, decimals=2, step=.1)
 
 
 if __name__ == '__main__':
