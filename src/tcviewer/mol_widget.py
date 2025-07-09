@@ -50,11 +50,11 @@ class MoleculeScene:
         self.post_draw()
         pass
 
-    def screenshot(self, path: str):
+    def screenshot(self, path: str, scale=4):
         self.post_draw()
         img_filter = vtk.vtkWindowToImageFilter()
         img_filter.SetInput(self.parent.renWin)
-        img_filter.SetScale(4)
+        img_filter.SetScale(scale)
         img_filter.SetInputBufferTypeToRGBA()
         img_filter.ReadFrontBufferOff()
         img_filter.Update()
