@@ -17,6 +17,8 @@ from vtkmodules.vtkFiltersCore import vtkTubeFilter
 from tcviewer import mol_widget
 from tcviewer.settings import settings
 import tcutility
+import tcutility.data
+import tcutility.results
 import pyfmo
 from scm import plams
 import numpy as np
