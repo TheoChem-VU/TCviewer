@@ -10,6 +10,15 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent"]
 dynamic = ["version"]
+dependencies = [
+"GitPython",
+"numpy",
+"vtk",
+"scikit-image",
+"plams",
+"TCutility",
+"PySide6",
+]
 
 [build-system]
 requires = ["setuptools==63.4.3", "wheel", "setuptools-git-versioning<2"]
