@@ -1,24 +1,10 @@
+from tcviewer import mol_widget, settings
 try:
     from PySide6 import *
     has_qt = True
 except ImportError:
     has_qt = False
 
-import vtk
-import vtkmodules.vtkRenderingOpenGL2
-from vtkmodules.util.numpy_support import numpy_to_vtk
-from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from vtkmodules.vtkCommonColor import vtkNamedColors
-from vtkmodules.vtkFiltersSources import vtkConeSource
-from vtkmodules.vtkRenderingCore import vtkActor, vtkAssembly, vtkFollower, vtkPolyDataMapper, vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor, vtkLight, vtkCamera
-from vtkmodules.vtkFiltersSources import vtkLineSource, vtkSphereSource, vtkRegularPolygonSource
-from vtkmodules.vtkFiltersCore import vtkTubeFilter
-
-from tcviewer import mol_widget, settings
-import tcutility
-import pyfmo
-from scm import plams
-import numpy as np
 
 
 class Screen:
@@ -114,6 +100,7 @@ if has_qt:
 
         def screenshots(self, *args, **kwargs):
             self.molview.screenshots(*args, **kwargs)
+
 
 if __name__ == '__main__':
     with Screen(headless=False) as scr:
