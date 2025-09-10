@@ -14,7 +14,6 @@ dependencies = [
 "GitPython",
 "numpy",
 "vtk",
-"scikit-image",
 "plams",
 "TCutility",
 "PySide6",
