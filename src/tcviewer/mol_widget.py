@@ -25,6 +25,12 @@ import numpy as np
 import os
 
 
+def ensure_list(inp):
+    if not hasattr(inp, '__iter__'):
+        return [inp]
+    return inp
+
+
 class MoleculeScene:
     def __init__(self, parent):
         self.parent = parent
@@ -44,6 +50,8 @@ class MoleculeScene:
         self.transform.PostMultiply()
         self.camera_followers = []
 
+        self._text_actors = []
+
     def __enter__(self):
         return self
 
@@ -53,6 +61,9 @@ class MoleculeScene:
 
     def screenshot(self, path: str, scale=4, enable_transparency=True):
         self.post_draw()
+        for actor in self._text_actors:
+            actor.VisibilityOff()
+
         img_filter = vtk.vtkWindowToImageFilter()
         img_filter.SetInput(self.parent.renWin)
         img_filter.SetScale(scale)
@@ -67,6 +78,10 @@ class MoleculeScene:
         writer.SetFileName(path)
         writer.SetInputConnection(img_filter.GetOutputPort())
         writer.Write()
+
+        for actor in self._text_actors:
+            actor.VisibilityOn()
+            
 
     def save_camera(self):
         camera = self.renderer.GetActiveCamera()
@@ -223,8 +238,6 @@ class MoleculeScene:
             if actor.type not in ['bond', 'intbond']:
                 continue
 
-            print(actor.atoms, p1, p2)
-
             if p1 in actor.atoms and p2 in actor.atoms:
                 self.renderer.RemoveActor(actor)
 
@@ -251,6 +264,7 @@ class MoleculeScene:
         actor = vtkActor()
         actor.SetMapper(mapper)
         actor.GetProperty().SetColor(*color)
+        actor._original_color = color
         actor.GetProperty().SetOpacity(opacity)
         actor.GetProperty().SetAmbient(.3)
         actor.GetProperty().SetDiffuse(1)
@@ -402,6 +416,7 @@ class MoleculeScene:
           textActor.GetTextProperty().SetFontSize(fontsize)
           textActor.GetTextProperty().SetColor(color)
           self.renderer.AddActor2D(textActor)
+          self._text_actors.append(textActor)
           
     def use_perspective(self):
         self.use_parallel_projection = False
@@ -462,8 +477,8 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
             scene.renderer.SetActiveCamera(self._base_ren.GetActiveCamera())
             scene.draw_molecule(mol)
             if orbs:
-                scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), 0.03, [0, 1, 1])
-                scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), -0.03, [1, 1, 0])
+                scene.draw_isosurface(ensure_list(orbs.mos['LUMO'])[0].cube_file(), 0.03, [0, 1, 1])
+                scene.draw_isosurface(ensure_list(orbs.mos['LUMO'])[0].cube_file(), -0.03, [1, 1, 0])
         self.set_active_mol(-1)
 
     def new_scene(self):
@@ -671,7 +686,7 @@ if has_qt:
             ren.RemoveActor(highlightActor)
 
         def remove_all_highlights(self, exception=None):
-            exception = tcutility.ensure_list(exception)
+            exception = ensure_list(exception)
             for actor in self.selected_actors:
                 if actor in exception:
                     continue
@@ -702,8 +717,8 @@ if has_qt:
                 scene.renderer.SetActiveCamera(self._base_ren.GetActiveCamera())
                 scene.draw_molecule(mol)
                 if orbs:
-                    scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), 0.03, [0, 1, 1])
-                    scene.draw_isosurface(tcutility.ensure_list(orbs.mos['LUMO'])[0].cube_file(), -0.03, [1, 1, 0])
+                    scene.draw_isosurface(ensure_list(orbs.mos['LUMO'])[0].cube_file(), 0.03, [0, 1, 1])
+                    scene.draw_isosurface(ensure_list(orbs.mos['LUMO'])[0].cube_file(), -0.03, [1, 1, 0])
             self.set_active_mol(-1)
 
         def new_scene(self):
@@ -772,9 +787,10 @@ if has_qt:
         def _update_isosurfaces(self):
             opacity = self.parent.settings.get_value('Iso Surface', 'Opacity')
             shininess = self.parent.settings.get_value('Iso Surface', 'Shininess')
-
+            switch_colors = self.parent.settings.get_value('Iso Surface', 'Switch Phase Colors')
             for scene in self.scenes:
                 actors = scene.renderer.GetActors()
+                colors = {}
                 for actor in actors:
                     if not hasattr(actor, 'type'):
                         continue
@@ -789,6 +805,21 @@ if has_qt:
                     actor.GetProperty().SetOpacity(opacity)
                     actor.GetProperty().SetSpecular(shininess)
                     actor.GetMapper().GetInputConnection(0, 0).GetProducer().Update()
+
+                    colors[actor.type] = actor._original_color
+
+                for actor in actors:
+                    if not hasattr(actor, 'type'):
+                        continue
+                    if not actor.type.startswith('surface'):
+                        continue
+
+                    if switch_colors:
+                        other_color = colors['surfacem'] if actor.type == 'surfacep' else colors['surfacep']
+                        actor.GetProperty().SetColor(other_color)
+                    else:
+                        actor.GetProperty().SetColor(colors[actor.type])
+
             self.renWin.Render()
 
         def _update_atoms(self):
