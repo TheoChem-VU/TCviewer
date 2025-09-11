@@ -16,7 +16,7 @@ dependencies = [
 "vtk",
 "plams",
 "TCutility",
-"PySide6",
+"PySide6-essentials",
 ]
 
 [build-system]
