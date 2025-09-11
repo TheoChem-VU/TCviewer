@@ -1,5 +1,5 @@
 try:
-    from PySide6 import *
+    from PySide6 import QtWidgets, QtCore
     has_qt = True
 except ImportError:
     has_qt = False
