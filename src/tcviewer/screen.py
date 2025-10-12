@@ -6,9 +6,9 @@ except ImportError:
     has_qt = False
 
 
-
 class Screen:
     def __new__(cls, headless=False, existing_app=None):
+        print('In Screen', headless)
         if headless or not has_qt:
             return _HeadlessScreen()
         else:
@@ -20,7 +20,7 @@ class Screen:
 
 class _HeadlessScreen:
     def __init__(self):
-        self.molview = mol_widget.MoleculeWidget(headless=True)
+        self.molview = mol_widget.MoleculeWidget(self, headless=True)
         self.use_parallel_projection = True
 
     def __enter__(self):
@@ -80,7 +80,6 @@ if has_qt:
             self.window.layout.setColumnStretch(0, 0)
             self.window.layout.setColumnStretch(1, 1)
             self.window.layout.setColumnStretch(2, 0)
-
 
         def __enter__(self):
             self.__post_init__()

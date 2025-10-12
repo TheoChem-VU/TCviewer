@@ -432,15 +432,16 @@ class MoleculeScene:
 class MoleculeWidget:
     def __new__(self, parent=None, headless=False):
         if headless or not has_qt:
-            return _HeadlessMoleculeWidget()
+            return _HeadlessMoleculeWidget(parent)
         else:
             return _MoleculeWidget(parent)
 
 
 class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
-    def __init__(self):
+    def __init__(self, parent):
         super().__init__()
         self.scenes = []
+        self.parent = parent
 
         self.molecule_renderers = []
         self.renWin = vtk.vtkRenderWindow()
