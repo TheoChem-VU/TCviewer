@@ -19,6 +19,7 @@ from tcviewer.settings import settings
 import tcutility
 import tcutility.data
 import tcutility.results
+import tcintegral
 import pyfmo
 from scm import plams
 import numpy as np
@@ -241,17 +242,24 @@ class MoleculeScene:
             if p1 in actor.atoms and p2 in actor.atoms:
                 self.renderer.RemoveActor(actor)
 
-    def draw_isosurface(self, grid, isovalue=None, color=(1, 1, 0), opacity=.3, shininess=.0):
+    def draw_isosurface(self, data, isovalue=None, color=(1, 1, 0), opacity=.3, shininess=.0):
         # vtkImageData is the vtk image volume type
         # this is where the conversion happens
-        depthArray = numpy_to_vtk(grid.values.reshape(*grid.shape).ravel(order='F'), deep=True, array_type=vtk.VTK_DOUBLE)
-        imdata = vtk.vtkImageData()
-        imdata.SetDimensions(grid.shape)
-        imdata.SetSpacing(grid.spacing)
-        imdata.SetOrigin(grid.origin)
-        imdata.GetPointData().SetScalars(depthArray)
         mcplus = vtk.vtkMarchingCubes()
-        mcplus.SetInputData(imdata)
+        if isinstance(data, tcintegral.grid.Grid):
+            depthArray = numpy_to_vtk(data.values.reshape(*data.shape).ravel(order='F'), deep=True, array_type=vtk.VTK_DOUBLE)
+            imdata = vtk.vtkImageData()
+            imdata.SetDimensions(data.shape)
+            imdata.SetSpacing(data.spacing)
+            imdata.SetOrigin(data.origin)
+            imdata.GetPointData().SetScalars(depthArray)
+            mcplus.SetInputData(imdata)
+            scale = 1
+
+        elif isinstance(data, vtk.vtkStructuredPointsReader):
+            mcplus.SetInputConnection(data.GetOutputPort())
+            scale = 0.529177249
+
         mcplus.ComputeNormalsOn()
         mcplus.ComputeGradientsOn()
         mcplus.SetValue(0, isovalue)
@@ -271,6 +279,7 @@ class MoleculeScene:
         actor.GetProperty().SetSpecular(shininess)
         actor.GetProperty().SetSpecularPower(70)
         actor.GetProperty().SetSpecularColor((1, 1, 1))
+        actor.SetScale(scale)
         actor.PickableOff()
         if isovalue < 0:
             actor.type = 'surfacem'
@@ -280,15 +289,15 @@ class MoleculeScene:
 
         self.renderer.AddActor(actor)
 
-    def draw_dual_isosurface(self, grid, isovalue=None, colorm=(1, 0, 0), colorp=(0, 0, 1), opacity=None, shininess=None):
+    def draw_dual_isosurface(self, data, isovalue=None, colorm=(1, 0, 0), colorp=(0, 0, 1), opacity=None, shininess=None):
         if isovalue is None:
             isovalue = self.parent.parent.settings.get_value('Iso Surface', 'Iso Value')
         if opacity is None:
             opacity = self.parent.parent.settings.get_value('Iso Surface', 'Opacity')
         if shininess is None:
             shininess = self.parent.parent.settings.get_value('Iso Surface', 'Shininess')
-        self.draw_isosurface(grid, isovalue,  color=colorp, opacity=opacity, shininess=shininess)
-        self.draw_isosurface(grid, -isovalue, color=colorm, opacity=opacity, shininess=shininess)
+        self.draw_isosurface(data, isovalue,  color=colorp, opacity=opacity, shininess=shininess)
+        self.draw_isosurface(data, -isovalue, color=colorm, opacity=opacity, shininess=shininess)
 
     def draw_axes(self):
         for v in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
