@@ -91,9 +91,9 @@ class MoleculeScene:
         self.cam_settings['focal point'] = camera.GetFocalPoint()
         self.cam_settings['view up'] = camera.GetViewUp()
         self.cam_settings['distance'] = camera.GetDistance()
-        # self.cam_settings['clipping range'] = camera.GetClippingRange()
+        self.cam_settings['clipping range'] = camera.GetClippingRange()
         self.cam_settings['parallel_projection'] = self.use_parallel_projection
-        self.cam_settings['clipping range'] = (0.1, 1000)
+        # self.cam_settings['clipping range'] = (0., 1e7)
         self.cam_settings['orientation'] = camera.GetOrientation()
 
     def load_camera(self):
@@ -450,6 +450,7 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
     def __init__(self, parent):
         super().__init__()
         self.scenes = []
+        self.molecules = []
         self.parent = parent
 
         self.molecule_renderers = []
@@ -458,6 +459,7 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
         # self.renWin.SetMultiSamples(4)
         self.renWin.BordersOn()
         self.interactor_style = vtk.vtkInteractorStyleTrackballCamera()
+        self.interactor_style.AutoAdjustCameraClippingRangeOff()
         # self.GetActiveCamera()
         self.SetInteractorStyle(self.interactor_style)
         self._base_ren = vtkRenderer()
@@ -514,12 +516,14 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
         index = index % len(self.scenes)
         [scene.renderer.DrawOff() for scene in self.scenes]
         self.scenes[index].renderer.DrawOn()
-        self.scenes[index].load_camera()
         self.scenes[index].renderer.Render()
         self.renWin.Initialize()
         self.renWin.Render()
         self.Initialize()
         self.Render()
+        # self.scenes[index].reset_camera()
+        self.scenes[index].load_camera()
+        self.scenes[index].post_draw()
 
     @property
     def active_scene_index(self):
@@ -566,6 +570,7 @@ if has_qt:
             # self.renWin.SetMultiSamples(4)
             self.renWin.BordersOn()
             self.interactor_style = vtk.vtkInteractorStyleTrackballCamera()
+            # self.interactor_style.AutoAdjustCameraClippingRangeOff()
             self.SetInteractorStyle(self.interactor_style)
             self._base_ren = vtkRenderer()
             self._base_ren.SetBackground(1, 1, 1)
@@ -756,7 +761,6 @@ if has_qt:
             index = index % len(self.scenes)
             [scene.renderer.DrawOff() for scene in self.scenes]
             self.scenes[index].renderer.DrawOn()
-            self.scenes[index].load_camera()
             self.scenes[index].renderer.Render()
             self.renWin.Initialize()
             self.renWin.Render()
@@ -765,7 +769,10 @@ if has_qt:
 
             self.parent.molviewslider.setMaximum(len(self.scenes) - 1)
             self.parent.molviewslider.setValue(index)
-
+            # self.scenes[index].reset_camera()
+            self.scenes[index].load_camera()
+            self.scenes[index].post_draw()
+            
         @property
         def active_scene_index(self):
             if len(self.scenes) == 0:
