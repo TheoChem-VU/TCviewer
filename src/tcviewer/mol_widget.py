@@ -24,6 +24,7 @@ import pyfmo
 from scm import plams
 import numpy as np
 import os
+import pyperclip
 
 
 def ensure_list(inp):
@@ -560,6 +561,7 @@ if has_qt:
         def __init__(self, parent):
             super().__init__()
             self.scenes = []
+            self.molecules = []
 
             self.parent = parent
             self.parent.settings.tabs['Atom'].connect(self._update_atoms)
@@ -911,7 +913,7 @@ if has_qt:
                 if event.key() == QtCore.Qt.Key_Left:
                     self.parent().previous_mol()
                 if event.key() == QtCore.Qt.Key_C and event.modifiers() == QtCore.Qt.ControlModifier:
-                    print('copy')
+                    pyperclip.copy(str(scene.mol))
                 if event.key() == QtCore.Qt.Key_V and event.modifiers() == QtCore.Qt.ControlModifier:
                     print('paste')
                 if event.key() == QtCore.Qt.Key_Space:
