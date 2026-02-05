@@ -10,6 +10,7 @@ settings = {
     'atom': {
         'size': 1/2.4,
         'draw_quadrants': True,
+        'draw_outline': True,
         'quadrant_follow_camera': True,
         'quadrant_width': 0.02,
     },
@@ -171,6 +172,7 @@ if has_qt:
 			with self.add_tab('Atom') as tab:
 				tab.add_spinbox('Size Ratio', 1/2.4, minimum=0, step=0.05, decimals=3)
 				tab.add_checkbox('Draw Quadrants', True)
+				tab.add_checkbox('Draw Outline', True)
 				tab.add_spinbox('Quadrant Width', default=0.02, minimum=0, step=0.001, decimals=3, suffix_text='Å')
 
 			with self.add_tab('Bond') as tab:

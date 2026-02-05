@@ -132,18 +132,18 @@ class MoleculeScene:
         self.parent.Initialize()
         self.save_camera()
 
-    def draw_molecule(self, mol):
+    def draw_molecule(self, mol,):
         self.mol = mol
 
         for atom in mol:
             self.draw_atom(atom)
-
-        mol.guess_bonds()
+        if len(mol.bonds) == 0:
+            mol.guess_bonds()
         for bond in mol.bonds:
             self.draw_single_bond(bond.atom1.coords, bond.atom2.coords)
 
     def draw_atom(self, atom, color=None):
-        def draw_disk(rotatex, rotatey):
+        def draw_disk(rotatex, rotatey, name):
             circle = vtkRegularPolygonSource()
             circle.SetCenter([0, 0, 0])
             circle.SetRadius(tcutility.data.atom.radius(atom.symbol) * settings['atom']['size'] + settings['atom']['quadrant_width'])
@@ -159,7 +159,7 @@ class MoleculeScene:
             circleActor.SetMapper(circleMapper)
             circleActor.GetProperty().SetColor([0, 0, 0])
             circleActor.PickableOff()
-            circleActor.type = f'quadrant_{atom.symbol}'
+            circleActor.type = f'{name}_{atom.symbol}'
 
             self.camera_followers.append({'actor': circleActor, 'rotatex': rotatex, 'rotatey': rotatey, 'cumrotatex': 0, 'cumrotatey': 0, 'orig_pos': atom.coords})
             self.renderer.AddActor(circleActor)
@@ -185,10 +185,11 @@ class MoleculeScene:
         sphereActor.SetUserTransform(self.transform)
         self.renderer.AddActor(sphereActor)
 
+        if settings['atom']['draw_outline']:
+            draw_disk(0, 0, 'outline')
         if settings['atom']['draw_quadrants']:
-            draw_disk(0, 0)
-            draw_disk(-65, 0)
-            draw_disk(0, -65)
+            draw_disk(-65, 0, 'quadrant')
+            draw_disk(0, -65, 'quadrant')
 
     def draw_single_bond(self, p1, p2):
         p1, p2 = np.array(p1), np.array(p2)
@@ -841,6 +842,7 @@ if has_qt:
 
         def _update_atoms(self):
             draw_quadrants = self.parent.settings.get_value('Atom', 'Draw Quadrants')
+            draw_outline = self.parent.settings.get_value('Atom', 'Draw Outline')
             quadrant_width = self.parent.settings.get_value('Atom', 'Quadrant Width')
             size_ratio = self.parent.settings.get_value('Atom', 'Size Ratio')
 
@@ -849,7 +851,7 @@ if has_qt:
                 for actor in actors:
                     if not hasattr(actor, 'type'):
                         continue
-                    if not any(actor.type.startswith(typ) for typ in ['atom', 'quadrant']):
+                    if not any(actor.type.startswith(typ) for typ in ['atom', 'quadrant', 'outline']):
                         continue
 
                     symbol = actor.type.split('_')[1]
@@ -861,6 +863,12 @@ if has_qt:
 
                     if actor.type.startswith('quadrant'):
                         if draw_quadrants and quadrant_width > 0.0:
+                            actor.VisibilityOn()
+                        else:
+                            actor.VisibilityOff()
+
+                    if actor.type.startswith('outline'):
+                        if draw_outline and quadrant_width > 0.0:
                             actor.VisibilityOn()
                         else:
                             actor.VisibilityOff()
