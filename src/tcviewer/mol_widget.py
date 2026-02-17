@@ -5,7 +5,7 @@ except ImportError:
     has_qt = False
 
 import vtk
-import vtkmodules.vtkRenderingOpenGL2
+# import vtkmodules.vtkRenderingOpenGL2
 from vtkmodules.util.numpy_support import numpy_to_vtk
 from vtkmodules.vtkCommonColor import vtkNamedColors
 from vtkmodules.vtkFiltersSources import vtkConeSource
