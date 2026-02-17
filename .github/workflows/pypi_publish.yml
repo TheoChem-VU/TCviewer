@@ -38,3 +38,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@unstable/v1
         with:
           skip-existing: true
+          verbose: true
