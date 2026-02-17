@@ -1,5 +1,5 @@
 [project]
-name = "TCviewer"
+name = "tcviewer"
 authors = [
   { name="Yuman Hordijk", email="yumanhordijk@gmail.com"}]
 description = "Molecular and Surface drawing program."
