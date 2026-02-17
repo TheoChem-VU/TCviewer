@@ -7,7 +7,6 @@ except ImportError:
 import vtk
 import vtkmodules.vtkRenderingOpenGL2
 from vtkmodules.util.numpy_support import numpy_to_vtk
-from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtkmodules.vtkCommonColor import vtkNamedColors
 from vtkmodules.vtkFiltersSources import vtkConeSource
 from vtkmodules.vtkRenderingCore import vtkTextActor, vtkActor, vtkAssembly, vtkFollower, vtkPolyDataMapper, vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor, vtkLight, vtkCamera
@@ -557,6 +556,7 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
 
 
 if has_qt:
+    from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
     class _MoleculeWidget(QVTKRenderWindowInteractor):
         def __init__(self, parent):
             super().__init__()
