@@ -42,7 +42,6 @@ class _HeadlessScreen:
         self.molview.screenshots(*args, **kwargs)
 
 
-
 if has_qt:
     class _Screen(QtWidgets.QApplication):
         def __post_init__(self):
@@ -53,22 +52,22 @@ if has_qt:
             grid_widget.setLayout(self.window.layout)
             self.window.setCentralWidget(grid_widget)
             self.window.setWindowTitle("TCViewer 2.0")
-            
+
             # set up the settings screen
-            self.settings = settings.DefaultSettings()
-            self.window.layout.addWidget(self.settings, 0, 3, 2, 1)
+            self.window.settings = settings.DefaultSettings()
+            self.window.layout.addWidget(self.window.settings, 0, 3, 2, 1)
 
             # set up the molecule screen
-            self.molview = mol_widget.MoleculeWidget(self)
+            self.molview = mol_widget.MoleculeWidget(self.window)
             self.window.layout.addWidget(self.molview, 0, 0, 1, 3)
 
             # make a scrollbar for changing the molecule
-            self.molviewslider = QtWidgets.QScrollBar()
-            self.molviewslider.setOrientation(QtCore.Qt.Horizontal)
-            self.molviewslider.setMinimum(0)
-            self.molviewslider.setMaximum(0)
-            self.molviewslider.valueChanged.connect(self.molview.set_active_mol)
-            self.window.layout.addWidget(self.molviewslider, 1, 1)
+            self.window.molviewslider = QtWidgets.QScrollBar()
+            self.window.molviewslider.setOrientation(QtCore.Qt.Horizontal)
+            self.window.molviewslider.setMinimum(0)
+            self.window.molviewslider.setMaximum(0)
+            self.window.molviewslider.valueChanged.connect(self.molview.set_active_mol)
+            self.window.layout.addWidget(self.window.molviewslider, 1, 1)
 
             self.molviewslider_prevbtn = QtWidgets.QPushButton('<')
             self.molviewslider_prevbtn.clicked.connect(self.molview.previous_mol)
@@ -103,7 +102,8 @@ if has_qt:
             self.molview.screenshots(*args, **kwargs)
 
     class _ScreenWindow(QtWidgets.QMainWindow):
-        def __post_init__(self):
+        def __init__(self):
+            super().__init__()
             self.use_parallel_projection = True
             self.layout = QtWidgets.QGridLayout()
             grid_widget = QtWidgets.QWidget()
@@ -143,15 +143,6 @@ if has_qt:
             self.isclosed = True
             event.accept()
 
-        def __enter__(self):
-            self.__post_init__()
-            return self
-
-        def __exit__(self, *args):
-            self.window.show()
-            self.exec()
-            self.shutdown()
-
         def draw_molecule(self, *args, **kwargs):
             self.molview.draw_molecule(*args, **kwargs)
 
@@ -171,14 +162,14 @@ if __name__ == '__main__':
         ...
         # with scr.add_molscene() as scene:
         #     # res = tcutility.results.read('/Users/yumanhordijk/PhD/Projects/RadicalAdditionASMEDA/data/DFT/TS_C_O/PyFrag_OLYP_TZ2P/frag_Substrate')
-        #     orbs = pyfmo.orbitals2.objects.Orbitals('/Users/yumanhordijk/Downloads/FragAnal.adf.rkf')
+            # orbs = pyfmo.orbitals2.objects.Orbitals('/Users/yumanhordijk/Downloads/FragAnal.adf.rkf')
 
-        #     cub1 = orbs.sfos['1(SOMO)'].cube_file()
+            # cub1 = orbs.sfos['1(SOMO)'].cube_file()
         #     cub2 = orbs.sfos['2(21A)'].cube_file()
 
         #     S = cub1.copy()
         #     S.values = abs(cub1.values * cub2.values)
-        #     mol = cub1.molecule
+            # mol = cub1.molecule
 
         #     # T = tcutility.geometry.MolTransform(mol)
         #     # T.center(1)  # center on C1

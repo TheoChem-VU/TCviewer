@@ -34,7 +34,7 @@ if has_qt:
 			return self
 
 		def __exit__(self, *args):
-			...
+			self.layout.setRowStretch(self.layout.rowCount(), 1)
 
 		def add(self, name: str = None, default: Any = None, range: Tuple[float] = None, options: List[str] = None):
 			row = self.layout.rowCount()

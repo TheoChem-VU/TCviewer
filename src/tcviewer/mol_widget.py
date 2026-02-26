@@ -4,14 +4,18 @@ try:
 except ImportError:
     has_qt = False
 
+# load implementations for rendering and interaction factory classes
+# import vtk.vtkRenderingOpenGL2
+import vtk.vtkInteractionStyle
+
 import vtk
-# import vtkmodules.vtkRenderingOpenGL2
-from vtkmodules.util.numpy_support import numpy_to_vtk
-from vtkmodules.vtkCommonColor import vtkNamedColors
-from vtkmodules.vtkFiltersSources import vtkConeSource
-from vtkmodules.vtkRenderingCore import vtkTextActor, vtkActor, vtkAssembly, vtkFollower, vtkPolyDataMapper, vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor, vtkLight, vtkCamera
-from vtkmodules.vtkFiltersSources import vtkLineSource, vtkArcSource, vtkSphereSource, vtkRegularPolygonSource
-from vtkmodules.vtkFiltersCore import vtkTubeFilter
+# import vtk.vtkRenderingOpenGL2
+from vtk.util.numpy_support import numpy_to_vtk
+from vtk.vtkCommonColor import vtkNamedColors
+from vtk.vtkFiltersSources import vtkConeSource
+from vtk.vtkRenderingCore import vtkTextActor, vtkActor, vtkAssembly, vtkFollower, vtkPolyDataMapper, vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor, vtkLight, vtkCamera
+from vtk.vtkFiltersSources import vtkLineSource, vtkArcSource, vtkSphereSource, vtkRegularPolygonSource
+from vtk.vtkFiltersCore import vtkTubeFilter
 
 from tcviewer import mol_widget
 from tcviewer.settings import settings
@@ -469,7 +473,7 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
         self.renWin.AddRenderer(self._base_ren)
 
         self.Initialize()
-        # self.Start()
+        self.Start()
 
         self._recording_mouse = False
         self._mouse_pos = None
@@ -579,13 +583,10 @@ if has_qt:
             self._base_ren.SetBackground(1, 1, 1)
             self._base_ren.DrawOff()
             self.renWin.AddRenderer(self._base_ren)
-            self.SetRenderWindow(self.renWin)
+            # self.SetRenderWindow(self.renWin)
 
             self.installEventFilter(MoleculeWidgetKeyPressFilter(parent=self))
             self.setAcceptDrops(True)
-
-            self.Initialize()
-            self.Start()
 
             self.selected_actors = []
             self.selected_actor_highlights = {}
@@ -595,6 +596,9 @@ if has_qt:
 
             self._recording_mouse = False
             self._mouse_pos = None
+
+            self.Initialize()
+            self.Start()
 
         def record_mouse_position(self, interactor, event):
             self._recording_mouse = True
@@ -769,7 +773,6 @@ if has_qt:
             self.renWin.Render()
             self.Initialize()
             self.Render()
-
             self.parent.molviewslider.setMaximum(len(self.scenes) - 1)
             self.parent.molviewslider.setValue(index)
             # self.scenes[index].reset_camera()
