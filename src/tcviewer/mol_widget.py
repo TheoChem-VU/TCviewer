@@ -479,10 +479,8 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
 
         self.molecule_renderers = []
         self.renWin = vtk.vtkRenderWindow()
-        self.renWin.SetAlphaBitPlanes(1)
+        self.renWin.SetAlphaBitPlanes(True)
         self.SetRenderWindow(self.renWin)
-        # self.renWin.SetMultiSamples(4)
-        self.renWin.BordersOn()
         self.renWin.SetOffScreenRendering(True)
         self.interactor_style = vtk.vtkInteractorStyleTrackballCamera()
         self.interactor_style.AutoAdjustCameraClippingRangeOff()
@@ -490,7 +488,7 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
         self.SetInteractorStyle(self.interactor_style)
         self._base_ren = vtkRenderer()
         self._base_ren.SetBackground(1, 1, 1)
-        self._base_ren.DrawOff()
+        # self._base_ren.DrawOff()
         self.renWin.AddRenderer(self._base_ren)
 
         self.Initialize()
