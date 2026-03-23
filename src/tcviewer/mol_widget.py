@@ -70,6 +70,7 @@ class MoleculeScene:
         for actor in self._text_actors:
             actor.VisibilityOff()
 
+        self.parent.renWin.Render()
         img_filter = vtk.vtkWindowToImageFilter()
         img_filter.SetInput(self.parent.renWin)
         img_filter.SetScale(scale)
@@ -649,7 +650,7 @@ if has_qt:
                     fname = str(url.toLocalFile())
                     if fname.endswith('.xyz'):
                         self.draw_molecule(fname)
-                        
+
                     if fname.endswith('.vtk'):
                         vtk = tcintegral.grid.from_vtk_file(fname)
                         with self.new_scene() as scene:
