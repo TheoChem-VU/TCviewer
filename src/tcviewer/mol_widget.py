@@ -30,6 +30,7 @@ import os
 import pyperclip
 
 
+
 def ensure_list(inp):
     if not hasattr(inp, '__iter__'):
         return [inp]
@@ -453,7 +454,7 @@ class MoleculeScene:
         self.use_parallel_projection = True
         camera = self.renderer.GetActiveCamera()
         camera.SetParallelProjection(True)
-        
+
 
 class MoleculeWidget:
     def __new__(self, parent=None, headless=False):
@@ -465,16 +466,23 @@ class MoleculeWidget:
 
 class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
     def __init__(self, parent):
+        graphics_factory = vtk.vtkGraphicsFactory()
+        graphics_factory.SetOffScreenOnlyMode(True)
+        graphics_factory.SetUseMesaClasses(True)
+
         super().__init__()
+
         self.scenes = []
         self.molecules = []
         self.parent = parent
 
         self.molecule_renderers = []
         self.renWin = vtk.vtkRenderWindow()
+        self.renWin.SetAlphaBitPlanes(1)
         self.SetRenderWindow(self.renWin)
         # self.renWin.SetMultiSamples(4)
         self.renWin.BordersOn()
+        self.renWin.SetOffScreenRendering(True)
         self.interactor_style = vtk.vtkInteractorStyleTrackballCamera()
         self.interactor_style.AutoAdjustCameraClippingRangeOff()
         # self.GetActiveCamera()
@@ -485,10 +493,8 @@ class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
         self.renWin.AddRenderer(self._base_ren)
 
         self.Initialize()
-        self.Start()
-
-        self._recording_mouse = False
-        self._mouse_pos = None
+        self.Render()
+        # self.Start()
 
     def draw_molecule(self, xyz):
         if xyz.endswith('.xyz'):
