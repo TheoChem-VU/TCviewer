@@ -66,11 +66,15 @@ class MoleculeScene:
         self.post_draw()
 
     def screenshot(self, path: str, scale=4, enable_transparency=True):
+        print('in screenshot')
         self.post_draw()
         for actor in self._text_actors:
             actor.VisibilityOff()
 
+        print('after post draw')
+
         self.parent.renWin.Render()
+        print('after Render')
         img_filter = vtk.vtkWindowToImageFilter()
         img_filter.SetInput(self.parent.renWin)
         img_filter.SetScale(scale)
@@ -88,7 +92,6 @@ class MoleculeScene:
 
         for actor in self._text_actors:
             actor.VisibilityOn()
-            
 
     def save_camera(self):
         camera = self.renderer.GetActiveCamera()
@@ -135,7 +138,7 @@ class MoleculeScene:
         
         self.renderer.ResetCamera()
         self.parent.renWin.Render()
-        self.parent.Initialize()
+        # self.parent.Initialize()
         self.save_camera()
 
     def draw_molecule(self, mol,):
@@ -465,104 +468,31 @@ class MoleculeWidget:
             return _MoleculeWidget(parent)
 
 
-class _HeadlessMoleculeWidget(vtk.vtkRenderWindowInteractor):
+class _HeadlessMoleculeWidget:
     def __init__(self, parent):
-        graphics_factory = vtk.vtkGraphicsFactory()
-        graphics_factory.SetOffScreenOnlyMode(True)
-        graphics_factory.SetUseMesaClasses(True)
+        self._graphics_factory = vtk.vtkGraphicsFactory(off_screen_only_mode=True)
 
-        super().__init__()
+        # super().__init__()
 
         self.scenes = []
         self.molecules = []
         self.parent = parent
 
         self.molecule_renderers = []
-        self.renWin = vtk.vtkRenderWindow()
-        self.renWin.SetAlphaBitPlanes(True)
-        self.SetRenderWindow(self.renWin)
-        self.renWin.SetOffScreenRendering(True)
-        self.interactor_style = vtk.vtkInteractorStyleTrackballCamera()
-        self.interactor_style.AutoAdjustCameraClippingRangeOff()
-        # self.GetActiveCamera()
-        self.SetInteractorStyle(self.interactor_style)
         self._base_ren = vtkRenderer()
-        self._base_ren.SetBackground(1, 1, 1)
-        # self._base_ren.DrawOff()
+        self.renWin = vtk.vtkRenderWindow(off_screen_rendering=True)
         self.renWin.AddRenderer(self._base_ren)
+        self.renWin.SetAlphaBitPlanes(True)
+        self._base_ren.SetBackground(1, 1, 1)
 
-        self.Initialize()
-        self.Render()
-        # self.Start()
-
-    def draw_molecule(self, xyz):
-        if xyz.endswith('.xyz'):
-            mol = plams.Molecule(xyz)
-            orbs = False
-        else:
-            res = tcutility.results.read(xyz)
-            orbs = pyfmo.orbitals.Orbitals(res.files['adf.rkf'])
-            mol = res.molecule.output
-
-        # disable previous scenes
-        [scene.renderer.DrawOff() for scene in self.scenes]
-
-        with self.new_scene() as scene:
-            scene.renderer.SetActiveCamera(self._base_ren.GetActiveCamera())
-            scene.draw_molecule(mol)
-            if orbs:
-                scene.draw_isosurface(ensure_list(orbs.mos['LUMO'])[0].cube_file(), 0.03, [0, 1, 1])
-                scene.draw_isosurface(ensure_list(orbs.mos['LUMO'])[0].cube_file(), -0.03, [1, 1, 0])
-        self.set_active_mol(-1)
+        self.scene = self.new_scene()
 
     def new_scene(self):
-        scene = MoleculeScene(self)
-        scene.renderer.SetActiveCamera(self._base_ren.GetActiveCamera())
-        [scene.renderer.DrawOff() for scene in self.scenes]
-        self.scenes.append(scene)
-        self.set_active_mol(-1)
-        return scene
-
-    def next_mol(self):
-        self.set_active_mol(self.active_scene_index + 1)
-
-    def previous_mol(self):
-        self.set_active_mol(self.active_scene_index - 1)
-
-    def set_active_mol(self, index):
-        if len(self.scenes) == 0:
-            return
-
-        self.active_scene.save_camera()
-
-        index = index % len(self.scenes)
-        [scene.renderer.DrawOff() for scene in self.scenes]
-        self.scenes[index].renderer.DrawOn()
-        self.scenes[index].renderer.Render()
-        self.renWin.Initialize()
-        self.renWin.Render()
-        self.Initialize()
-        self.Render()
-        # self.scenes[index].reset_camera()
-        self.scenes[index].load_camera()
-        self.scenes[index].post_draw()
-
-    @property
-    def active_scene_index(self):
-        if len(self.scenes) == 0:
-            return
-        return [i for i, scene in enumerate(self.scenes) if scene.renderer.GetDraw()][0]
-
-    @property
-    def active_scene(self):
-        return self.scenes[self.active_scene_index]
-
-    @property
-    def number_of_scenes(self):
-        return len(self.scenes)
+        self.scene = MoleculeScene(self)
+        return self.scene
 
     def screenshot(self, path, scale=4):
-        self.active_scene.screenshot(path, scale=scale)
+        self.scene.screenshot(path, scale=scale)
 
     def screenshots(self, paths=None, directory=None, scale=4):
         if paths is None and directory is None:
