@@ -146,7 +146,7 @@ class MoleculeScene:
         for bond in mol.bonds:
             self.draw_single_bond(bond.atom1.coords, bond.atom2.coords)
 
-    def draw_atom(self, atom, color=None):
+    def draw_atom(self, atom, color=None, opacity=1, ambient=0.65, draw_outline=True, draw_quadrants=True):
         def draw_disk(rotatex, rotatey, name):
             circle = vtkRegularPolygonSource()
             circle.SetCenter([0, 0, 0])
@@ -159,6 +159,7 @@ class MoleculeScene:
                 circleActor.SetCamera(self.renderer.GetActiveCamera())
             else:
                 circleActor = vtkActor()
+            circleActor.GetProperty().SetOpacity(opacity)
             circleActor.SetPosition(atom.coords)
             circleActor.SetMapper(circleMapper)
             circleActor.GetProperty().SetColor([0, 0, 0])
@@ -177,7 +178,8 @@ class MoleculeScene:
         sphereActor = vtkActor()
         sphereActor.SetMapper(sphereMapper)
         sphereActor.SetPosition(atom.coords)
-        sphereActor.GetProperty().SetAmbient(0.65)
+        sphereActor.GetProperty().SetOpacity(opacity)
+        sphereActor.GetProperty().SetAmbient(ambient)
         sphereActor.GetProperty().SetDiffuse(0.5)
         sphereActor.GetProperty().SetSpecular(0.5)
         sphereActor.GetProperty().SetSpecularPower(5.0)
@@ -189,13 +191,13 @@ class MoleculeScene:
         sphereActor.SetUserTransform(self.transform)
         self.renderer.AddActor(sphereActor)
 
-        if settings['atom']['draw_outline']:
+        if settings['atom']['draw_outline'] and draw_outline:
             draw_disk(0, 0, 'outline')
-        if settings['atom']['draw_quadrants']:
+        if settings['atom']['draw_quadrants'] and draw_quadrants:
             draw_disk(-65, 0, 'quadrant')
             draw_disk(0, -65, 'quadrant')
 
-    def draw_single_bond(self, p1, p2):
+    def draw_single_bond(self, p1, p2, color=None, opacity=1, radius=None):
         p1, p2 = np.array(p1), np.array(p2)
         lineSource = vtkLineSource()
         lineSource.SetPoint1(p1)
@@ -204,7 +206,11 @@ class MoleculeScene:
         tubeFilter = vtkTubeFilter()
         tubeFilter.source = lineSource
         tubeFilter.SetInputConnection(lineSource.GetOutputPort())
-        tubeFilter.SetRadius(settings['bond']['radius'])
+        if radius is None:
+            tubeFilter.SetRadius(settings['bond']['radius'])
+        else:
+            tubeFilter.SetRadius(radius)
+
         tubeFilter.SetCapping(True)
         tubeFilter.SetNumberOfSides(20)
 
@@ -213,7 +219,13 @@ class MoleculeScene:
 
         tubeActor = vtkActor()
         tubeActor.SetMapper(tubeMapper)
-        tubeActor.GetProperty().SetColor(settings['bond']['color'])
+        if color is None:
+            tubeActor.GetProperty().SetColor(settings['bond']['color'])
+        else:
+            tubeActor.GetProperty().SetColor(color)
+
+        tubeActor.GetProperty().SetOpacity(opacity)
+
         tubeActor.type = 'bond'
         # a1, a2 = [atom for atom in self.mol if atom.coords == p1][0], [atom for atom in self.mol if atom.coords == p2][0]
         tubeActor.atoms = p1.tolist(), p2.tolist()
