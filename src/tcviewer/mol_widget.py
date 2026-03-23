@@ -42,7 +42,7 @@ class MoleculeScene:
         self.parent = parent
         self.renderer = vtkRenderer()
         self.renderer.SetBackground([1, 1, 1])
-        self.renderer.UseFXAAOn()
+        # self.renderer.UseFXAAOn()
         self.parent.renWin.AddRenderer(self.renderer)
         self.use_parallel_projection = False
 
@@ -79,7 +79,7 @@ class MoleculeScene:
         img_filter.SetInput(self.parent.renWin)
         img_filter.SetScale(scale)
         if enable_transparency:
-            img_filter.SetInputBufferTypeToRGBA()
+            img_filter.SetInputBufferTypeToRGB()
         else:
             img_filter.SetInputBufferTypeToRGB()
         # img_filter.ReadFrontBufferOff()
