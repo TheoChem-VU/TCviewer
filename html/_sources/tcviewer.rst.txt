@@ -1,0 +1,45 @@
+tcviewer package
+================
+
+Submodules
+----------
+
+tcviewer.materials module
+-------------------------
+
+.. automodule:: tcviewer.materials
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+tcviewer.mol\_widget module
+---------------------------
+
+.. automodule:: tcviewer.mol_widget
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+tcviewer.screen module
+----------------------
+
+.. automodule:: tcviewer.screen
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+tcviewer.settings module
+------------------------
+
+.. automodule:: tcviewer.settings
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: tcviewer
+   :members:
+   :undoc-members:
+   :show-inheritance:
