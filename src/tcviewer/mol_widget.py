@@ -647,7 +647,22 @@ if has_qt:
                 e.accept()
                 for url in e.mimeData().urls():
                     fname = str(url.toLocalFile())
-                    self.draw_molecule(fname)
+                    if fname.endswith('.xyz'):
+                        self.draw_molecule(fname)
+                        
+                    if fname.endswith('.vtk'):
+                        vtk = tcintegral.grid.from_vtk_file(fname)
+                        with self.new_scene() as scene:
+                            scene.draw_dual_isosurface(vtk)
+                            if hasattr(vtk, 'molecule'):
+                                scene.draw_molecule(vtk.molecule)
+
+                    if fname.endswith('.cub'):
+                        cub = tcintegral.grid.from_cub_file(fname)
+                        with self.new_scene() as scene:
+                            scene.draw_dual_isosurface(cub)
+                            if hasattr(cub, 'molecule'):
+                                scene.draw_molecule(cub.molecule)
             else:
                 e.ignore()
 
