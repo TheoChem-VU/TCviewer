@@ -79,10 +79,10 @@ class MoleculeScene:
         img_filter.SetInput(self.parent.renWin)
         img_filter.SetScale(scale)
         if enable_transparency:
-            img_filter.SetInputBufferTypeToRGB()
+            img_filter.SetInputBufferTypeToRGBA()
+            img_filter.ReadFrontBufferOff()
         else:
             img_filter.SetInputBufferTypeToRGB()
-        # img_filter.ReadFrontBufferOff()
         img_filter.Update()
 
         writer = vtk.vtkPNGWriter()
