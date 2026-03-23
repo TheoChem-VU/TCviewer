@@ -66,15 +66,11 @@ class MoleculeScene:
         self.post_draw()
 
     def screenshot(self, path: str, scale=4, enable_transparency=True):
-        print('in screenshot')
         self.post_draw()
         for actor in self._text_actors:
             actor.VisibilityOff()
 
-        print('after post draw')
-
         self.parent.renWin.Render()
-        print('after Render')
         img_filter = vtk.vtkWindowToImageFilter()
         img_filter.SetInput(self.parent.renWin)
         img_filter.SetScale(scale)
