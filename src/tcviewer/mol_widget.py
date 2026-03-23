@@ -73,9 +73,9 @@ class MoleculeScene:
         img_filter.SetInput(self.parent.renWin)
         img_filter.SetScale(scale)
         if enable_transparency:
-            img_filter.SetInputBufferTypeToRGB()
-        else:
             img_filter.SetInputBufferTypeToRGBA()
+        else:
+            img_filter.SetInputBufferTypeToRGB()
         img_filter.ReadFrontBufferOff()
         img_filter.Update()
 
