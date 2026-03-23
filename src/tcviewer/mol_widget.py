@@ -78,7 +78,7 @@ class MoleculeScene:
             img_filter.SetInputBufferTypeToRGBA()
         else:
             img_filter.SetInputBufferTypeToRGB()
-        img_filter.ReadFrontBufferOff()
+        # img_filter.ReadFrontBufferOff()
         img_filter.Update()
 
         writer = vtk.vtkPNGWriter()
