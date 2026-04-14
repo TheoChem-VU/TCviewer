@@ -10,3 +10,7 @@ class Geometry(shapes.EditableShape):
     def set_opacity(self, val: float):
         for actor in self.renderer.GetActors():
             actor.GetProperty().SetOpacity(val)
+
+    def set_opacity(self, val: float):
+        for actor in self.renderer.GetActors():
+            actor.GetProperty().SetOpacity(val)

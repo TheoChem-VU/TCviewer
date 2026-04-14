@@ -23,7 +23,7 @@ else:
     from PySide import QtWidgets
     from PySide.QtGui import QApplication, QMainWindow
 
-from tcviewer import shapes
+from tcviewer import shapes, widgets
 
 
 class MolWidget(QVTKRenderWindowInteractor):
@@ -86,8 +86,10 @@ class MolWidget(QVTKRenderWindowInteractor):
 class TCViewerWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.layout = QtWidgets.QHBoxLayout(self)
         self.molwidget_stack = QtWidgets.QStackedWidget(self)
-        self.setCentralWidget(self.molwidget_stack)
+        # self.layout.addWidget(self.molwidget_stack)
+        widgets.PeriodicTable(self)
 
     def add_molscene(self):
         scene = MolWidget(self)
