@@ -19,9 +19,9 @@ from vtk.vtkFiltersCore import vtkTubeFilter
 
 from tcviewer import mol_widget
 from tcviewer.settings import settings
-import tcutility
-import tcutility.data
-import tcutility.results
+import tcmu
+import tcmu.data
+import tcmu.results
 import tcintegral
 import pyfmo
 from scm import plams
@@ -151,7 +151,7 @@ class MoleculeScene:
         def draw_disk(rotatex, rotatey, name):
             circle = vtkRegularPolygonSource()
             circle.SetCenter([0, 0, 0])
-            circle.SetRadius(tcutility.data.atom.radius(atom.symbol) * settings['atom']['size'] + settings['atom']['quadrant_width'])
+            circle.SetRadius(tcmu.data.atom.radius(atom.symbol) * settings['atom']['size'] + settings['atom']['quadrant_width'])
             circle.SetNumberOfSides(50)
             circleMapper = vtkPolyDataMapper()
             circleMapper.SetInputConnection(circle.GetOutputPort())
@@ -173,7 +173,7 @@ class MoleculeScene:
         sphere = vtkSphereSource()
         sphere.SetPhiResolution(35)
         sphere.SetThetaResolution(45)
-        sphere.SetRadius(tcutility.data.atom.radius(atom.symbol) * settings['atom']['size'])
+        sphere.SetRadius(tcmu.data.atom.radius(atom.symbol) * settings['atom']['size'])
         sphereMapper = vtkPolyDataMapper()
         sphereMapper.SetInputConnection(sphere.GetOutputPort())
         sphereActor = vtkActor()
@@ -185,7 +185,7 @@ class MoleculeScene:
         sphereActor.GetProperty().SetSpecular(0.5)
         sphereActor.GetProperty().SetSpecularPower(5.0)
         if color is None:
-            color = [x/255 for x in tcutility.data.atom.color(atom.symbol)]
+            color = [x/255 for x in tcmu.data.atom.color(atom.symbol)]
         sphereActor.GetProperty().SetColor(color)
         sphereActor.type = f'atom_{atom.symbol}'
         sphereActor.atom = atom
@@ -684,7 +684,7 @@ if has_qt:
                     mol = plams.Molecule(xyz)
                     orbs = False
                 else:
-                    res = tcutility.results.read(xyz)
+                    res = tcmu.results.read(xyz)
                     orbs = pyfmo.orbitals.Orbitals(res.files['adf.rkf'])
                     mol = res.molecule.output
             elif isinstance(xyz, plams.Molecule):
@@ -819,9 +819,9 @@ if has_qt:
 
                     symbol = actor.type.split('_')[1]
                     if actor.type.startswith('atom'):
-                        radius = tcutility.data.atom.radius(symbol) * size_ratio
+                        radius = tcmu.data.atom.radius(symbol) * size_ratio
                     else:
-                        radius = tcutility.data.atom.radius(symbol) * size_ratio + quadrant_width
+                        radius = tcmu.data.atom.radius(symbol) * size_ratio + quadrant_width
                     actor.GetMapper().GetInputConnection(0, 0).GetProducer().SetRadius(radius)
 
                     if actor.type.startswith('quadrant'):
@@ -938,8 +938,8 @@ if has_qt:
                         if len(bonds) == 1:
                             a1, a2 = bonds[0]
                             c1, c2 = np.array(scene.transform.TransformPoint(a1.coords)), np.array(scene.transform.TransformPoint(a2.coords))
-                            R = tcutility.geometry.vector_align_rotmat(c1 - c2, [1, 0, 0])
-                            angles = tcutility.geometry.rotmat_to_angles(R)
+                            R = tcmu.geometry.vector_align_rotmat(c1 - c2, [1, 0, 0])
+                            angles = tcmu.geometry.rotmat_to_angles(R)
                             T.Translate(-c1)
                             T.RotateX(angles[0] * 180 / np.pi)
                             T.RotateY(angles[1] * 180 / np.pi)
@@ -956,8 +956,8 @@ if has_qt:
                             c1 = np.array(scene.transform.TransformPoint(a1.coords))
                             c2 = np.array(scene.transform.TransformPoint(a2.coords))
 
-                            R = tcutility.geometry.vector_align_rotmat(c1 - c2, [1, 0, 0])
-                            angles = tcutility.geometry.rotmat_to_angles(R)
+                            R = tcmu.geometry.vector_align_rotmat(c1 - c2, [1, 0, 0])
+                            angles = tcmu.geometry.rotmat_to_angles(R)
                             T.Translate(-c1)
                             T.RotateX(angles[0] * 180 / np.pi)
                             T.RotateY(angles[1] * 180 / np.pi)
@@ -971,8 +971,8 @@ if has_qt:
 
                             n = np.cross(c1 - c2, c3 - c4)
 
-                            R = tcutility.geometry.vector_align_rotmat(n, [0, 1, 0])
-                            angles = tcutility.geometry.rotmat_to_angles(R)
+                            R = tcmu.geometry.vector_align_rotmat(n, [0, 1, 0])
+                            angles = tcmu.geometry.rotmat_to_angles(R)
                             T.RotateX(angles[0] * 180 / np.pi)
                             T.RotateY(angles[1] * 180 / np.pi)
                             T.RotateZ(angles[2] * 180 / np.pi)

@@ -101,6 +101,7 @@ if has_qt:
         def screenshots(self, *args, **kwargs):
             self.molview.screenshots(*args, **kwargs)
 
+
     class _ScreenWindow(QtWidgets.QMainWindow):
         def __init__(self):
             super().__init__()
