@@ -1,6 +1,6 @@
 from tcviewer import mol_widget, settings
 try:
-    from PySide6 import QtWidgets, QtCore
+    from PySide6 import QtWidgets, QtCore, QtGui
     has_qt = True
 except ImportError:
     has_qt = False

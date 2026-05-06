@@ -292,11 +292,11 @@ class MoleculeScene:
         actor.GetProperty().SetColor(*color)
         actor._original_color = color
         actor.GetProperty().SetOpacity(opacity)
-        actor.GetProperty().SetAmbient(.3)
+        actor.GetProperty().SetAmbient(1)
         actor.GetProperty().SetDiffuse(1)
         actor.GetProperty().SetSpecular(shininess)
         actor.GetProperty().SetSpecularPower(70)
-        actor.GetProperty().SetSpecularColor((1, 1, 1))
+        actor.GetProperty().SetSpecularColor((0, 0, 0))
         actor.SetScale(scale)
         actor.PickableOff()
         if isovalue < 0:
