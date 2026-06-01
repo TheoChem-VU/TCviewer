@@ -7,6 +7,7 @@ from tcviewer import shapes, register_setting
 class Atom(shapes.EditableShape):
     def __init__(self, 
             renderer: vtk.vtkRenderer, 
+            renderer_outline: vtk.vtkRenderer, 
             atom_type: Union[str, int], 
             coords: List[float],
             name: str = None,
@@ -14,6 +15,7 @@ class Atom(shapes.EditableShape):
             radius: float = None,
             scale: float = 0.5,
             quadrant_width: float = 0.02,
+            quadrants_enabled: bool = True,
 
             opacity: float = 1,
             ambient: float = 0.65,
@@ -35,6 +37,7 @@ class Atom(shapes.EditableShape):
             self.settings['radius'] = radius
         self.settings['scale'] = scale
         self.settings['quadrant_width'] = quadrant_width
+        self.settings['quadrants_enabled'] = quadrants_enabled
 
         self.settings['opacity'] = opacity
         self.settings['ambient'] = ambient
@@ -99,6 +102,11 @@ class Atom(shapes.EditableShape):
         self.settings['quadrant_width'] = width
         self._reset_properties()
 
+    @register_setting('Geometry', 'Draw Quadrants', 'quadrants_enabled')
+    def set_quadrants_enabled(self, enable: bool = True):
+        self.settings['quadrants_enabled'] = enable
+        self._reset_properties()
+
     @register_setting('Material', 'Opacity', 'opacity', limits={'opacity': (0, 1)})
     def set_opacity(self, opacity: float = 1):
         self.settings['opacity'] = opacity
@@ -146,9 +154,14 @@ class Atom(shapes.EditableShape):
 
     def _reset_properties(self):
         self.sphere.SetRadius(self.settings['radius'] * self.settings['scale'])
-        self.outline_disk.SetRadius(self.settings['radius'] * self.settings['scale'] + self.settings['quadrant_width'])
-        self.quadrant_disk1.SetRadius(self.settings['radius'] * self.settings['scale'] + self.settings['quadrant_width'])
-        self.quadrant_disk2.SetRadius(self.settings['radius'] * self.settings['scale'] + self.settings['quadrant_width'])
+        if self.settings['quadrants_enabled']:
+            self.outline_disk.SetRadius(self.settings['radius'] * self.settings['scale'] + self.settings['quadrant_width'])
+            self.quadrant_disk1.SetRadius(self.settings['radius'] * self.settings['scale'] + self.settings['quadrant_width'])
+            self.quadrant_disk2.SetRadius(self.settings['radius'] * self.settings['scale'] + self.settings['quadrant_width'])
+        else:
+            self.outline_disk.SetRadius(0)
+            self.quadrant_disk1.SetRadius(0)
+            self.quadrant_disk2.SetRadius(0)
 
         for actor in self.renderer.GetActors():
             actor.GetProperty().SetOpacity(self.settings['opacity'])
@@ -161,3 +174,6 @@ class Atom(shapes.EditableShape):
         self.outline_disk_actor.GetProperty().SetColor(self.settings['outline_color'])
         self.quadrant_disk1_actor.GetProperty().SetColor(self.settings['outline_color'])
         self.quadrant_disk2_actor.GetProperty().SetColor(self.settings['outline_color'])
+
+
+
