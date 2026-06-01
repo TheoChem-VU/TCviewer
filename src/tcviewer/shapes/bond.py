@@ -9,12 +9,14 @@ from scm import plams
 class Bond(shapes.EditableShape):
     def __init__(self, 
             renderer: vtk.vtkRenderer, 
+            renderer_outline: vtk.vtkRenderer, 
             a1: plams.Atom, 
             a2: plams.Atom,
             name: str = None,
 
-            radius: float = 0.05,
+            radius: float = 0.1,
             color: List[float] = (0, 0, 0),
+            use_atom_colors: bool = False,
 
             opacity: float = 1,
             ambient: float = 0.65,
@@ -22,12 +24,18 @@ class Bond(shapes.EditableShape):
             specular: float = 0.5,
             specular_power: float = 5.0,
             ):
-        self.renderer = renderer
+        # renderer = renderer
+        # renderer_outline = vtk.vtkRenderer(layer=1)
+        # renderer.GetRenderWindow().SetNumberOfLayers(2)
+        # renderer.SetBackground(0,0,0,0)
+        # renderer.SetBackground(0,0,0)
         self.a1 = a1
         self.a2 = a2
         self.name = name
 
-        # settings holds all properties related to the atom shape
+        self.renderer = renderer
+
+        # settings holds all properties related to the bond
         self.settings = {}
         self.settings['radius'] = radius
         self.settings['opacity'] = opacity
@@ -36,26 +44,85 @@ class Bond(shapes.EditableShape):
         self.settings['specular'] = specular
         self.settings['specular_power'] = specular_power
         self.settings['color'] = color
-
+        self.settings['use_atom_colors'] = use_atom_colors
 
         a1, a2 = np.array(a1.coords), np.array(a2.coords)
-        self.line_source = vtk.vtkLineSource()
-        self.line_source.SetPoint1(a1)
-        self.line_source.SetPoint2(a2)
 
-        self.tube_filter = vtk.vtkTubeFilter()
-        self.tube_filter.source = self.line_source
-        self.tube_filter.SetInputConnection(self.line_source.GetOutputPort())
-        self.tube_filter.SetRadius(self.settings['radius'])
+        self.line_source1 = vtk.vtkLineSource()
+        self.line_source1.SetPoint1(a1)
+        self.line_source1.SetPoint2((a1 + a2) / 2)
 
-        self.tube_filter.SetNumberOfSides(10)
+        self.line_source2 = vtk.vtkLineSource()
+        self.line_source2.SetPoint1((a1 + a2) / 2)
+        self.line_source2.SetPoint2(a2)
 
-        tube_mapper = vtk.vtkPolyDataMapper()
-        tube_mapper.SetInputConnection(self.tube_filter.GetOutputPort())
+        self.tube_filter1 = vtk.vtkTubeFilter()
+        self.tube_filter1.source = self.line_source1
+        self.tube_filter1.SetInputConnection(self.line_source1.GetOutputPort())
+        self.tube_filter1.SetRadius(self.settings['radius'])
+        self.tube_filter1.SetNumberOfSides(10)
 
-        self.tube_actor = vtk.vtkActor()
-        self.tube_actor.SetMapper(tube_mapper)
-        renderer.AddActor(self.tube_actor)
+        self.tube_filter2 = vtk.vtkTubeFilter()
+        self.tube_filter2.source = self.line_source2
+        self.tube_filter2.SetInputConnection(self.line_source2.GetOutputPort())
+        self.tube_filter2.SetRadius(self.settings['radius'])
+        self.tube_filter2.SetNumberOfSides(10)
+
+        tube_mapper1 = vtk.vtkPolyDataMapper()
+        tube_mapper1.SetInputConnection(self.tube_filter1.GetOutputPort())
+
+        tube_mapper2 = vtk.vtkPolyDataMapper()
+        tube_mapper2.SetInputConnection(self.tube_filter2.GetOutputPort())
+
+        self.tube_actor1 = vtk.vtkActor()
+        self.tube_actor1.SetMapper(tube_mapper1)
+        renderer.AddActor(self.tube_actor1)
+
+        self.tube_actor2 = vtk.vtkActor()
+        self.tube_actor2.SetMapper(tube_mapper2)
+        renderer.AddActor(self.tube_actor2)
+
+
+        # cone_mapper_outline = vtk.vtkPolyDataMapper()
+        # self.tube_filter1 >> cone_mapper_outline
+
+        # cone_actor_outline = vtk.vtkActor(mapper=cone_mapper_outline)
+        # cone_actor_outline.property.color = vtk.vtkNamedColors().GetColor3d('Magenta')
+        # cone_actor_outline.property.LightingOff()
+
+        # renderer.AddActor(cone_actor_outline)
+
+        # cone_mapper_outline = vtk.vtkPolyDataMapper()
+        # self.tube_filter2 >> cone_mapper_outline
+
+        # cone_actor_outline = vtk.vtkActor(mapper=cone_mapper_outline)
+        # cone_actor_outline.property.color = vtk.vtkNamedColors().GetColor3d('Magenta')
+        # cone_actor_outline.property.LightingOff()
+
+        # renderer.AddActor(cone_actor_outline)
+        # renderer.GetRenderWindow().AddRenderer(renderer_outline)
+
+        # points = vtk.vtkPoints()
+        # points.InsertNextPoint(a)
+
+
+        # rectSource = vtk.vtkGlyphSource2D()
+        # rectSource.SetGlyphTypeToRectangle()
+        # rectSource.FilledOn()  # This makes it a closed, filled polygon
+        # rectSource.DashOff() 
+        # rectSource.Update()
+
+        # rectMapper = vtk.vtkPolyDataMapper()
+        # rectMapper.SetInputConnection(rect.GetOutputPort())
+        # rectActor = vtk.vtkFollower()
+        # rectActor.SetCamera(renderer.GetActiveCamera())
+        # rectActor.SetPosition(coords)
+        # rectActor.SetMapper(rectMapper)
+        # rectActor.PickableOff()
+        # rectActor.RotateX(rotatex)
+        # rectActor.RotateY(rotatey)
+        # renderer.AddActor(rectActor)
+
 
         self._reset_properties()
 
@@ -63,7 +130,7 @@ class Bond(shapes.EditableShape):
         return self.name if self.name is not None else repr(self)
 
     @register_setting('Geometry', 'Radius', 'radius', limits={'radius': (0, float('inf'))})
-    def set_radius(self, radius: float = 0.05):
+    def set_radius(self, radius: float = 0.1):
         self.settings['radius'] = radius
         self._reset_properties()
 
@@ -102,11 +169,31 @@ class Bond(shapes.EditableShape):
             self.settings['color'][2] = B
         self._reset_properties()
 
+    @register_setting('Material', 'Use Atom Colors', 'use_atom_colors')
+    def set_use_atom_colors(self, enable: bool = False):
+        self.settings['use_atom_colors'] = enable
+        self._reset_properties()
+
     def _reset_properties(self):
-        self.tube_filter.SetRadius(self.settings['radius'])
-        self.tube_actor.GetProperty().SetColor(self.settings['color'])
-        self.tube_actor.GetProperty().SetOpacity(self.settings['opacity'])
-        self.tube_actor.GetProperty().SetAmbient(self.settings['ambient'])
-        self.tube_actor.GetProperty().SetDiffuse(self.settings['diffuse'])
-        self.tube_actor.GetProperty().SetSpecular(self.settings['specular'])
-        self.tube_actor.GetProperty().SetSpecularPower(self.settings['specular_power'])
+        self.tube_filter1.SetRadius(self.settings['radius'])
+        self.tube_filter2.SetRadius(self.settings['radius'])
+
+        if self.settings['use_atom_colors']:
+            self.tube_actor1.GetProperty().SetColor([x/255 for x in tcmu.data.atom.color(self.a1.symbol)])
+            self.tube_actor2.GetProperty().SetColor([x/255 for x in tcmu.data.atom.color(self.a2.symbol)])
+        else:
+            self.tube_actor1.GetProperty().SetColor(self.settings['color'])
+            self.tube_actor2.GetProperty().SetColor(self.settings['color'])
+
+        self.tube_actor1.GetProperty().SetOpacity(self.settings['opacity'])
+        self.tube_actor1.GetProperty().SetAmbient(self.settings['ambient'])
+        self.tube_actor1.GetProperty().SetDiffuse(self.settings['diffuse'])
+        self.tube_actor1.GetProperty().SetSpecular(self.settings['specular'])
+        self.tube_actor1.GetProperty().SetSpecularPower(self.settings['specular_power'])
+
+        self.tube_actor2.GetProperty().SetOpacity(self.settings['opacity'])
+        self.tube_actor2.GetProperty().SetAmbient(self.settings['ambient'])
+        self.tube_actor2.GetProperty().SetDiffuse(self.settings['diffuse'])
+        self.tube_actor2.GetProperty().SetSpecular(self.settings['specular'])
+        self.tube_actor2.GetProperty().SetSpecularPower(self.settings['specular_power'])
+        # renderer.GetRenderWindow().Render()
