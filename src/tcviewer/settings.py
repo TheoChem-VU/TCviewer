@@ -189,6 +189,76 @@ if has_qt:
 
 import random
 _registered_settings = []
+
+
+class SettingWidget(QtWidgets.QFrame):
+    def __init__(self, objs, name, internal_variable, func, limits):
+        super().__init__()
+        self.setLayout(QtWidgets.QHBoxLayout())
+        self.layout().addWidget(QtWidgets.QLabel(name))
+
+        self.func = func
+        self.objs = objs
+
+        annots = func.__annotations__
+        # internal_values = [ for obj in objs]
+        internal_values = []
+        for obj in objs:
+            v = obj.settings[internal_variable]
+            if not isinstance(v, list) and not isinstance(v, tuple):
+                v = [v]
+
+            internal_values.append(v)
+
+        # check if the internal_values are all the same
+        # if there is more than 1 different value we set
+        # the value to None
+        def all_same(vals):
+            diffs = []
+            for val in vals:
+                if val not in diffs:
+                    diffs.append(val)
+            return len(diffs) == 1
+
+        if all_same(internal_values):
+            internal_values = internal_values[0]
+        else:
+            internal_values = [None] * len(internal_values[0])
+
+        self.value_getters = []
+        for val, (name, typ) in zip(internal_values, annots.items()):
+            if typ is float:
+                sb = QtWidgets.QDoubleSpinBox()
+                if val is not None:
+                    sb.setValue(val)
+                self.layout().addWidget(sb)
+                self.value_getters.append(sb.value)
+                sb.valueChanged.connect(self.apply_setting)
+
+            if typ is bool:
+                sb = QtWidgets.QCheckBox()
+                if val is not None:
+                    sb.setChecked(val)
+                self.layout().addWidget(sb)
+                self.value_getters.append(sb.isChecked)
+                sb.stateChanged.connect(self.apply_setting)
+
+
+    def get_value(self):
+        return [vg() for vg in self.value_getters]
+
+    def apply_setting(self):
+        v = self.get_value()
+        renderers = set()
+        for obj in self.objs:
+            self.func(obj, *v)
+            renderers.add(obj.renderer)
+
+        for renderer in renderers:
+            renderer.GetRenderWindow().Render()
+
+
+
 class SettingsWidget(QtWidgets.QSplitter):
     def __init__(self):
         super().__init__()
@@ -205,26 +275,43 @@ class SettingsWidget(QtWidgets.QSplitter):
         item = QtWidgets.QListWidgetItem(str(obj))
         self.object_list.addItem(item)
         self.objects[str(item)] = obj
-        cls = obj.__class__.__name__
-        setts = [row for row in _registered_settings if row[-1] == cls]
-        if cls == 'Atom':
-            setts[0][4](obj, random.random())
-        else:
-            setts[0][4](obj, random.random()/10)
+        # cls = obj.__class__.__name__
+        # setts = [row for row in _registered_settings if row[-1] == cls]
+        # if cls == 'Atom':
+        #     setts[0][4](obj, random.random())
+        # else:
+        #     setts[0][4](obj, random.random()/10)
 
     def set_tabs(self):
         selected = self.object_list.selectedItems()
 
         self.settings_tabs.clear()
+        objs = []
         for sel in selected:
             obj = self.objects[str(sel)]
-            cls = obj.__class__.__name__
+            objs.append(obj)
 
+        classes = set(obj.__class__.__name__ for obj in objs)
+
+        # for obj in objs:
+        for cls in classes:
             setts = [row for row in _registered_settings if row[-1] == cls]
-            print(setts)
 
+            tabs = {}
 
+            for sett in setts:
+                tab, variable, internal_variable, limits, func, _ = sett
+                if tab not in tabs:
+                    frame = QtWidgets.QFrame()
+                    frame.setLayout(QtWidgets.QVBoxLayout())
+                    tabs[tab] = frame
 
+                widg = SettingWidget(objs, variable, internal_variable, func, limits)
+                tabs[tab].layout().addWidget(widg)
+
+        for tab_name, tab_frame in tabs.items():
+            self.settings_tabs.addTab(tab_frame, tab_name)
+            tab_frame.layout().addStretch()
 
 
 def register_setting(category: str, variable_name: str, internal_name: str, limits: dict = None):
@@ -233,6 +320,7 @@ def register_setting(category: str, variable_name: str, internal_name: str, limi
         _registered_settings.append((category, variable_name, internal_name, limits, func, cls))
         return func
     return inner_dec
+
 
 if __name__ == '__main__':
     sett = SettingsWidget()
