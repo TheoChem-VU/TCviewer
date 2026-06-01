@@ -7,28 +7,24 @@ from scm import plams
 
 
 class Bond(shapes.EditableShape):
-    def __init__(self, 
-            renderer: vtk.vtkRenderer, 
-            renderer_outline: vtk.vtkRenderer, 
-            a1: plams.Atom, 
-            a2: plams.Atom,
-            name: str = None,
+    def __init__(
+        self, 
+        renderer: vtk.vtkRenderer, 
+        a1: plams.Atom, 
+        a2: plams.Atom,
+        name: str = None,
 
-            radius: float = 0.1,
-            color: List[float] = (0, 0, 0),
-            use_atom_colors: bool = False,
+        radius: float = 0.1,
+        outline_radius: float = 0.02,
+        color: List[float] = [0, 0, 0],
+        use_atom_colors: bool = False,
 
-            opacity: float = 1,
-            ambient: float = 0.65,
-            diffuse: float = 0.5,
-            specular: float = 0.5,
-            specular_power: float = 5.0,
-            ):
-        # renderer = renderer
-        # renderer_outline = vtk.vtkRenderer(layer=1)
-        # renderer.GetRenderWindow().SetNumberOfLayers(2)
-        # renderer.SetBackground(0,0,0,0)
-        # renderer.SetBackground(0,0,0)
+        opacity: float = 1,
+        ambient: float = 0.65,
+        diffuse: float = 0.5,
+        specular: float = 0.5,
+        specular_power: float = 5.0
+    ):
         self.a1 = a1
         self.a2 = a2
         self.name = name
@@ -45,16 +41,18 @@ class Bond(shapes.EditableShape):
         self.settings['specular_power'] = specular_power
         self.settings['color'] = color
         self.settings['use_atom_colors'] = use_atom_colors
+        self.settings['outline_radius'] = outline_radius
 
-        a1, a2 = np.array(a1.coords), np.array(a2.coords)
+        c1 = np.array(a1.coords)
+        c2 = np.array(a2.coords)
 
         self.line_source1 = vtk.vtkLineSource()
-        self.line_source1.SetPoint1(a1)
-        self.line_source1.SetPoint2((a1 + a2) / 2)
+        self.line_source1.SetPoint1(c1)
+        self.line_source1.SetPoint2((c1 + c2) / 2)
 
         self.line_source2 = vtk.vtkLineSource()
-        self.line_source2.SetPoint1((a1 + a2) / 2)
-        self.line_source2.SetPoint2(a2)
+        self.line_source2.SetPoint1((c1 + c2) / 2)
+        self.line_source2.SetPoint2(c2)
 
         self.tube_filter1 = vtk.vtkTubeFilter()
         self.tube_filter1.source = self.line_source1
@@ -82,48 +80,26 @@ class Bond(shapes.EditableShape):
         self.tube_actor2.SetMapper(tube_mapper2)
         renderer.AddActor(self.tube_actor2)
 
+        # draw the outline
+        self.line_source_outline = vtk.vtkLineSource()
+        self.line_source_outline.SetPoint1(c1)
+        self.line_source_outline.SetPoint2(c2)
 
-        # cone_mapper_outline = vtk.vtkPolyDataMapper()
-        # self.tube_filter1 >> cone_mapper_outline
+        self.tube_filter_outline = vtk.vtkTubeFilter()
+        self.tube_filter_outline.SetInputConnection(self.line_source_outline.GetOutputPort())
+        self.tube_filter_outline.SetRadius(self.settings['radius'] + self.settings['outline_radius'])
+        self.tube_filter_outline.SetNumberOfSides(10)
+        self.tube_filter_outline.CappingOn()
 
-        # cone_actor_outline = vtk.vtkActor(mapper=cone_mapper_outline)
-        # cone_actor_outline.property.color = vtk.vtkNamedColors().GetColor3d('Magenta')
-        # cone_actor_outline.property.LightingOff()
+        outlineMapper = vtk.vtkPolyDataMapper()
+        outlineMapper.SetInputConnection(self.tube_filter_outline.GetOutputPort())
 
-        # renderer.AddActor(cone_actor_outline)
+        outlineActor = vtk.vtkActor()
+        outlineActor.SetMapper(outlineMapper)
+        outlineActor.GetProperty().FrontfaceCullingOn()
+        outlineActor.GetProperty().SetColor(0.0, 0.0, 0.0)
 
-        # cone_mapper_outline = vtk.vtkPolyDataMapper()
-        # self.tube_filter2 >> cone_mapper_outline
-
-        # cone_actor_outline = vtk.vtkActor(mapper=cone_mapper_outline)
-        # cone_actor_outline.property.color = vtk.vtkNamedColors().GetColor3d('Magenta')
-        # cone_actor_outline.property.LightingOff()
-
-        # renderer.AddActor(cone_actor_outline)
-        # renderer.GetRenderWindow().AddRenderer(renderer_outline)
-
-        # points = vtk.vtkPoints()
-        # points.InsertNextPoint(a)
-
-
-        # rectSource = vtk.vtkGlyphSource2D()
-        # rectSource.SetGlyphTypeToRectangle()
-        # rectSource.FilledOn()  # This makes it a closed, filled polygon
-        # rectSource.DashOff() 
-        # rectSource.Update()
-
-        # rectMapper = vtk.vtkPolyDataMapper()
-        # rectMapper.SetInputConnection(rect.GetOutputPort())
-        # rectActor = vtk.vtkFollower()
-        # rectActor.SetCamera(renderer.GetActiveCamera())
-        # rectActor.SetPosition(coords)
-        # rectActor.SetMapper(rectMapper)
-        # rectActor.PickableOff()
-        # rectActor.RotateX(rotatex)
-        # rectActor.RotateY(rotatey)
-        # renderer.AddActor(rectActor)
-
-
+        renderer.AddActor(outlineActor)
         self._reset_properties()
 
     def __str__(self):
@@ -132,6 +108,11 @@ class Bond(shapes.EditableShape):
     @register_setting('Geometry', 'Radius', 'radius', limits={'radius': (0, float('inf'))})
     def set_radius(self, radius: float = 0.1):
         self.settings['radius'] = radius
+        self._reset_properties()
+
+    @register_setting('Geometry', 'Outline Radius', 'outline_radius', limits={'outline_radius': (0, float('inf'))})
+    def set_outline_radius(self, outline_radius: float = 0.02):
+        self.settings['outline_radius'] = outline_radius
         self._reset_properties()
 
     @register_setting('Material', 'Opacity', 'opacity', limits={'opacity': (0, 1)})
@@ -177,6 +158,7 @@ class Bond(shapes.EditableShape):
     def _reset_properties(self):
         self.tube_filter1.SetRadius(self.settings['radius'])
         self.tube_filter2.SetRadius(self.settings['radius'])
+        self.tube_filter_outline.SetRadius(self.settings['radius'] + self.settings['outline_radius'])
 
         if self.settings['use_atom_colors']:
             self.tube_actor1.GetProperty().SetColor([x/255 for x in tcmu.data.atom.color(self.a1.symbol)])

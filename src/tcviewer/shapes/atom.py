@@ -5,24 +5,24 @@ from tcviewer import shapes, register_setting
 
 
 class Atom(shapes.EditableShape):
-    def __init__(self, 
-            renderer: vtk.vtkRenderer, 
-            renderer_outline: vtk.vtkRenderer, 
-            atom_type: Union[str, int], 
-            coords: List[float],
-            name: str = None,
+    def __init__(
+        self, 
+        renderer: vtk.vtkRenderer, 
+        atom_type: Union[str, int], 
+        coords: List[float],
+        name: str = None,
 
-            radius: float = None,
-            scale: float = 0.5,
-            quadrant_width: float = 0.02,
-            quadrants_enabled: bool = True,
+        radius: float = None,
+        scale: float = 0.5,
+        quadrant_width: float = 0.02,
+        quadrants_enabled: bool = True,
 
-            opacity: float = 1,
-            ambient: float = 0.65,
-            diffuse: float = 0.5,
-            specular: float = 0.5,
-            specular_power: float = 5.0,
-        ):
+        opacity: float = 1,
+        ambient: float = 0.65,
+        diffuse: float = 0.5,
+        specular: float = 0.5,
+        specular_power: float = 5.0,
+    ):
         self.renderer = renderer
         self.symbol = tcmu.data.atom.symbol(atom_type)
         self.coords = coords

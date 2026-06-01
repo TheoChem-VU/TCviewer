@@ -52,25 +52,9 @@ class MolScene(QVTKRenderWindowInteractor):
 
         self.shapes = []
 
-        self.renderer_outline = vtkRenderer(layer=1)
-        self.renderer_outline.SetBackground(1, 1, 1)
-
-
-        basic_passes = vtk.vtkRenderStepsPass()
-        glow_pass = vtk.vtkOutlineGlowPass(delegate_pass=basic_passes)
-        self.renderer_outline.SetPass(glow_pass)
-
-        self.renderer = vtkRenderer(layer=0)
-        # self.renderer.UseFXAAOn()
+        self.renderer = vtkRenderer()
         self.renderer.SetBackground(1, 1, 1)
         self.GetRenderWindow().SetMultiSamples(16)
-
-        # self.renderer.UseFXAAOn()
-        # self.renderer_outline.SetBackground(1, 1, 1)
-        self.renderer_outline.active_camera = self.renderer.active_camera
-
-        self.GetRenderWindow().SetNumberOfLayers(2)
-        self.GetRenderWindow().AddRenderer(self.renderer_outline)
         self.GetRenderWindow().AddRenderer(self.renderer)
 
         light = vtkLight()
@@ -87,7 +71,7 @@ class MolScene(QVTKRenderWindowInteractor):
         idx1 = a1.mol.atoms.index(a1) + 1
         idx2 = a2.mol.atoms.index(a2) + 1
 
-        bond = shapes.Bond(self.renderer, self.renderer_outline, a1, a2, name=f'Bond({a1.symbol}:{idx1} ––– {a2.symbol}:{idx2})', **kwargs)
+        bond = shapes.Bond(self.renderer, a1, a2, name=f'Bond({a1.symbol}:{idx1} ––– {a2.symbol}:{idx2})', **kwargs)
 
         self.shapes.append(bond)
         self.parent.settings.add_object(bond)
@@ -96,7 +80,7 @@ class MolScene(QVTKRenderWindowInteractor):
     def draw_atom(self, atom, **kwargs):
         idx = atom.mol.atoms.index(atom) + 1
 
-        atom = shapes.Atom(self.renderer, self.renderer_outline, atom.symbol, atom.coords, name=f'Atom({atom.symbol}:{idx})', **kwargs)
+        atom = shapes.Atom(self.renderer, atom.symbol, atom.coords, name=f'Atom({atom.symbol}:{idx})', **kwargs)
         self.shapes.append(atom)
         self.parent.settings.add_object(atom)
         return atom
@@ -188,7 +172,7 @@ class TCViewer(QApplication):
 if __name__ == "__main__":
     from scm import plams
 
-    mol = plams.Molecule('/Users/yumanhordijk/PhD/Programs/TheoCheM/TCMU/examples/job/asc.xyz')
+    mol = plams.Molecule(r'D:\Users\Yuman\Desktop\PhD\TCMU\examples\job\asc.xyz')
 
     with TCViewer() as scr:
         with scr.add_molscene() as scene:
@@ -199,20 +183,20 @@ if __name__ == "__main__":
             for bond in mol.bonds:
                 scene.draw_single_bond(bond.atom1, bond.atom2)
 
-        with scr.add_molscene() as scene:
-            for atom in mol:
-                a = scene.draw_atom(atom)
-                a.set_quadrant_width(0.1)
+        # with scr.add_molscene() as scene:
+        #     for atom in mol:
+        #         a = scene.draw_atom(atom)
+        #         a.set_quadrant_width(0.1)
 
-            mol.guess_bonds()
-            for bond in mol.bonds:
-                scene.draw_single_bond(bond.atom1, bond.atom2)
+        #     mol.guess_bonds()
+        #     for bond in mol.bonds:
+        #         scene.draw_single_bond(bond.atom1, bond.atom2)
 
-        with scr.add_molscene() as scene:
-            for atom in mol:
-                a = scene.draw_atom(atom)
-                a.set_quadrant_width(0.0)
+        # with scr.add_molscene() as scene:
+        #     for atom in mol:
+        #         a = scene.draw_atom(atom)
+        #         a.set_quadrant_width(0.0)
 
-            mol.guess_bonds()
-            for bond in mol.bonds:
-                scene.draw_single_bond(bond.atom1, bond.atom2)
+        #     mol.guess_bonds()
+        #     for bond in mol.bonds:
+        #         scene.draw_single_bond(bond.atom1, bond.atom2)
