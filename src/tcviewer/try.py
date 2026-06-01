@@ -5,6 +5,7 @@ from vtkmodules.vtkRenderingCore import vtkActor, vtkPolyDataMapper, vtkRenderer
 # load implementations for rendering and interaction factory classes
 import vtkmodules.vtkRenderingOpenGL2
 from vtk import vtkLineSource, vtkTubeFilter, vtkInteractorStyleTrackballCamera, vtkLight
+import vtk
 import numpy as np
 
 import vtkmodules.qt.QVTKRenderWindowInteractor as QVTK
@@ -51,9 +52,25 @@ class MolScene(QVTKRenderWindowInteractor):
 
         self.shapes = []
 
-        self.renderer = vtkRenderer()
-        self.renderer.UseFXAAOn()
+        self.renderer_outline = vtkRenderer(layer=1)
+        self.renderer_outline.SetBackground(1, 1, 1)
+
+
+        basic_passes = vtk.vtkRenderStepsPass()
+        glow_pass = vtk.vtkOutlineGlowPass(delegate_pass=basic_passes)
+        self.renderer_outline.SetPass(glow_pass)
+
+        self.renderer = vtkRenderer(layer=0)
+        # self.renderer.UseFXAAOn()
         self.renderer.SetBackground(1, 1, 1)
+        self.GetRenderWindow().SetMultiSamples(16)
+
+        # self.renderer.UseFXAAOn()
+        # self.renderer_outline.SetBackground(1, 1, 1)
+        self.renderer_outline.active_camera = self.renderer.active_camera
+
+        self.GetRenderWindow().SetNumberOfLayers(2)
+        self.GetRenderWindow().AddRenderer(self.renderer_outline)
         self.GetRenderWindow().AddRenderer(self.renderer)
 
         light = vtkLight()
@@ -70,7 +87,7 @@ class MolScene(QVTKRenderWindowInteractor):
         idx1 = a1.mol.atoms.index(a1) + 1
         idx2 = a2.mol.atoms.index(a2) + 1
 
-        bond = shapes.Bond(self.renderer, a1, a2, name=f'Bond({a1.symbol}:{idx1} ––– {a2.symbol}:{idx2})', **kwargs)
+        bond = shapes.Bond(self.renderer, self.renderer_outline, a1, a2, name=f'Bond({a1.symbol}:{idx1} ––– {a2.symbol}:{idx2})', **kwargs)
 
         self.shapes.append(bond)
         self.parent.settings.add_object(bond)
@@ -79,7 +96,7 @@ class MolScene(QVTKRenderWindowInteractor):
     def draw_atom(self, atom, **kwargs):
         idx = atom.mol.atoms.index(atom) + 1
 
-        atom = shapes.Atom(self.renderer, atom.symbol, atom.coords, name=f'Atom({atom.symbol}:{idx})', **kwargs)
+        atom = shapes.Atom(self.renderer, self.renderer_outline, atom.symbol, atom.coords, name=f'Atom({atom.symbol}:{idx})', **kwargs)
         self.shapes.append(atom)
         self.parent.settings.add_object(atom)
         return atom
@@ -131,7 +148,6 @@ class TCViewerWindow(QMainWindow):
         self.layout.addWidget(prev_button, 1, 0, 1, 1)
         self.layout.addWidget(self.scene_slider, 1, 1, 1, 1)
         self.layout.addWidget(next_button, 1, 2, 1, 1)
-
 
     def add_molscene(self):
         scene = MolWidget(self)
