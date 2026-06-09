@@ -23,8 +23,10 @@ class Bond(shapes.EditableShape):
         ambient: float = 0.65,
         diffuse: float = 0.5,
         specular: float = 0.5,
-        specular_power: float = 5.0
+        specular_power: float = 5.0,
+        **kwargs
     ):
+        super().__init__(**kwargs)
         self.a1 = a1
         self.a2 = a2
         self.name = name
@@ -101,6 +103,13 @@ class Bond(shapes.EditableShape):
 
         renderer.AddActor(outlineActor)
         self._reset_properties()
+
+        # this actor is used for drawing an outline around the atom
+        self.outline_actor = vtk.vtkActor()
+        self.outline_actor.SetMapper(outlineMapper)
+        self.outline_actor.GetProperty().LightingOff()
+        self.outline_actor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Magenta'))
+        # self.outline_actor.SetPosition(self.coords)
 
     def __str__(self):
         return self.name if self.name is not None else repr(self)

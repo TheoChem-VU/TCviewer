@@ -24,7 +24,62 @@ else:
     from PySide import QtWidgets, QtGui, QtCore
     from PySide.QtGui import QApplication, QMainWindow
 
-from tcviewer import shapes, widgets, settings
+from tcviewer import settings, shapes, widgets
+
+
+class OutlinePass:
+    def __init__(self, parent):
+        self.renderer_outline = vtk.vtkRenderer()
+        ren_win = parent.GetRenderWindow()
+        ren_win.SetNumberOfLayers(2)
+        self.renderer_outline.SetLayer(1)
+        ren_win.AddRenderer(self.renderer_outline)
+
+        basic_passes = vtk.vtkRenderStepsPass()
+        glow_pass = vtk.vtkOutlineGlowPass()
+        glow_pass.SetDelegatePass(basic_passes)
+        glow_pass.SetOutlineIntensity(15)
+
+        self.renderer_outline.SetPass(glow_pass)
+        self.camera = vtk.vtkCamera()
+        self.renderer_outline.SetActiveCamera(self.camera)
+        self.renderer_outline.AddObserver("StartEvent", self.sync_cameras)
+        self.renderer_outline.InteractiveOff()
+        self.parent = parent
+
+    def sync_cameras(self, obj, event):
+        self.camera.SetPosition(self.parent.renderer.GetActiveCamera().GetPosition())
+        self.camera.SetFocalPoint(self.parent.renderer.GetActiveCamera().GetFocalPoint())
+        self.camera.SetViewUp(self.parent.renderer.GetActiveCamera().GetViewUp())
+        self.camera.SetViewAngle(self.parent.renderer.GetActiveCamera().GetViewAngle())
+        # Let each renderer compute its OWN clipping range
+        self.renderer_outline.ResetCameraClippingRange()
+
+    def __contains__(self, actor):
+        for _actor in self.renderer_outline.GetActors():
+            if actor is _actor:
+                return True
+        return False
+
+    def add_actor(self, actor):
+        if actor not in self:
+            self.renderer_outline.AddActor(actor)
+            self.update()
+
+    def remove_actor(self, actor):
+        if actor in self:
+            self.renderer_outline.RemoveActor(actor)
+            self.update()
+
+    def clear_actors(self):
+        for actor in self.renderer_outline.GetActors():
+            self.renderer_outline.RemoveActor(actor)
+        self.update()
+
+    def update(self):
+        self.parent.GetRenderWindow().Render()
+        self.parent.renderer.ResetCamera()
+
 
 
 class MolWidget(QtWidgets.QSplitter):
@@ -54,7 +109,7 @@ class MolScene(QVTKRenderWindowInteractor):
 
         self.renderer = vtkRenderer()
         self.renderer.SetBackground(1, 1, 1)
-        self.GetRenderWindow().SetMultiSamples(16)
+        self.GetRenderWindow().SetMultiSamples(64)
         self.GetRenderWindow().AddRenderer(self.renderer)
 
         light = vtkLight()
@@ -65,13 +120,15 @@ class MolScene(QVTKRenderWindowInteractor):
         self.SetInteractorStyle(vtkInteractorStyleTrackballCamera())
         self.Initialize()
 
+        self.outline_pass = OutlinePass(self)
+
         self.setFocusPolicy(Qt.NoFocus)
 
     def draw_single_bond(self, a1, a2, **kwargs):
         idx1 = a1.mol.atoms.index(a1) + 1
         idx2 = a2.mol.atoms.index(a2) + 1
 
-        bond = shapes.Bond(self.renderer, a1, a2, name=f'Bond({a1.symbol}:{idx1} ––– {a2.symbol}:{idx2})', **kwargs)
+        bond = shapes.Bond(self.renderer, a1, a2, name=f'Bond({a1.symbol}:{idx1} ––– {a2.symbol}:{idx2})', outline_pass=self.outline_pass, **kwargs)
 
         self.shapes.append(bond)
         self.parent.settings.add_object(bond)
@@ -80,10 +137,13 @@ class MolScene(QVTKRenderWindowInteractor):
     def draw_atom(self, atom, **kwargs):
         idx = atom.mol.atoms.index(atom) + 1
 
-        atom = shapes.Atom(self.renderer, atom.symbol, atom.coords, name=f'Atom({atom.symbol}:{idx})', **kwargs)
+        atom = shapes.Atom(self.renderer, atom.symbol, atom.coords, name=f'Atom({atom.symbol}:{idx})', outline_pass=self.outline_pass, **kwargs)
         self.shapes.append(atom)
         self.parent.settings.add_object(atom)
         return atom
+
+    def add_outline(self, actor):
+        self.outline_pass.add_actor(actor)
 
 
 class TCViewerWindowKeyFilter(QtCore.QObject):
@@ -172,12 +232,14 @@ class TCViewer(QApplication):
 if __name__ == "__main__":
     from scm import plams
 
-    mol = plams.Molecule(r'D:\Users\Yuman\Desktop\PhD\TCMU\examples\job\asc.xyz')
+    # mol = plams.Molecule(r'D:\Users\Yuman\Desktop\PhD\TCMU\examples\job\asc.xyz')
+    mol = plams.Molecule(r'/Users/yumanhordijk/PhD/Programs/TheoCheM/TCMU/examples/job/asc.xyz')
 
     with TCViewer() as scr:
         with scr.add_molscene() as scene:
             for atom in mol:
                 a = scene.draw_atom(atom)
+                # scene.add_outline(a.outline_actor)
 
             mol.guess_bonds()
             for bond in mol.bonds:

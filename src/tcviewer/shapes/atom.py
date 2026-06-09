@@ -4,10 +4,24 @@ import tcmu
 from tcviewer import shapes, register_setting
 
 
+class AtomSpecificData:
+    # def _to_json(self):
+    ...
+
+
+class AtomSpecificRadius(AtomSpecificData):
+    def __call__(self, atom: 'Atom'):
+        return tcmu.data.atom.radius(atom.symbol)
+
+class AtomSpecificColor(AtomSpecificData):
+    def __call__(self, atom: 'Atom'):
+        return tcmu.data.atom.color(atom.symbol)
+
+
 class Atom(shapes.EditableShape):
     def __init__(
         self, 
-        renderer: vtk.vtkRenderer, 
+        renderer: vtk.vtkRenderer,
         atom_type: Union[str, int], 
         coords: List[float],
         name: str = None,
@@ -22,7 +36,9 @@ class Atom(shapes.EditableShape):
         diffuse: float = 0.5,
         specular: float = 0.5,
         specular_power: float = 5.0,
+        **kwargs
     ):
+        super().__init__(**kwargs)
         self.renderer = renderer
         self.symbol = tcmu.data.atom.symbol(atom_type)
         self.coords = coords
@@ -66,10 +82,10 @@ class Atom(shapes.EditableShape):
         self.sphere.SetPhiResolution(35)
         self.sphere.SetThetaResolution(45)
         self.sphere.SetRadius(self.settings['radius'] * self.settings['scale'])
-        sphereMapper = vtk.vtkPolyDataMapper()
-        sphereMapper.SetInputConnection(self.sphere.GetOutputPort())
+        self.sphere_mapper = vtk.vtkPolyDataMapper()
+        self.sphere_mapper.SetInputConnection(self.sphere.GetOutputPort())
         self.sphere_actor = vtk.vtkActor()
-        self.sphere_actor.SetMapper(sphereMapper)
+        self.sphere_actor.SetMapper(self.sphere_mapper)
         self.sphere_actor.SetPosition(coords)
         self.settings['color'] = [x/255 for x in tcmu.data.atom.color(self.symbol)]
         self.settings['outline_color'] = [0, 0, 0]
@@ -81,10 +97,19 @@ class Atom(shapes.EditableShape):
 
         self._reset_properties()
 
+        # this actor is used for drawing an outline around the atom
+        self.outline_actor = vtk.vtkActor()
+        self.outline_actor.SetMapper(self.sphere_mapper)
+        self.outline_actor.GetProperty().LightingOff()
+        self.outline_actor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Magenta'))
+        self.outline_actor.SetPosition(self.coords)
+
     def __str__(self):
         return self.name if self.name is not None else repr(self)
 
-    @register_setting('Geometry', 'Radius', 'radius', limits={'radius': (0, float('inf'))})
+    @register_setting('Geometry', 'Radius', 'radius', 
+        limits={'radius': (0, float('inf'))}, 
+        defaults={'radius': AtomSpecificRadius()})
     def set_radius(self, radius: float = None):
         if radius is None:
             self.settings['radius'] = tcmu.data.atom.radius(self.symbol)
@@ -92,12 +117,14 @@ class Atom(shapes.EditableShape):
             self.settings['radius'] = radius
         self._reset_properties()
 
-    @register_setting('Geometry', 'Scale', 'scale', limits={'scale': (0, float('inf'))})
+    @register_setting('Geometry', 'Scale', 'scale', 
+        limits={'scale': (0, float('inf'))})
     def set_scale(self, scale: float = 0.5):
         self.settings['scale'] = scale
         self._reset_properties()
 
-    @register_setting('Geometry', 'Quadrant Width', 'quadrant_width', limits={'width': (0, float('inf'))})
+    @register_setting('Geometry', 'Quadrant Width', 'quadrant_width', 
+        limits={'width': (0, float('inf'))})
     def set_quadrant_width(self, width: float = 0.02):
         self.settings['quadrant_width'] = width
         self._reset_properties()
@@ -132,24 +159,26 @@ class Atom(shapes.EditableShape):
         self.settings['specular_power'] = specular_power
         self._reset_properties()
 
-    @register_setting('Material', 'Color', 'color', limits={'R': (0, 1), 'G': (0, 1), 'B': (0, 1)})
-    def set_color(self, R: float = None, G: float = None, B: float = None):
+    @register_setting('Material', 'Color', 'color', 
+        limits={'R': (0, 255), 'G': (0, 255), 'B': (0, 255)}, 
+        defaults={'radius': AtomSpecificColor()})
+    def set_color(self, R: int = None, G: int = None, B: int = None):
         if R is not None:
-            self.settings['color'][0] = R
+            self.settings['color'][0] = R/255
         if G is not None:
-            self.settings['color'][1] = G
+            self.settings['color'][1] = G/255
         if B is not None:
-            self.settings['color'][2] = B
+            self.settings['color'][2] = B/255
         self._reset_properties()
 
-    @register_setting('Material', 'Outline Color', 'outline_color', limits={'R': (0, 1), 'G': (0, 1), 'B': (0, 1)})
-    def set_outline_color(self, R: float = None, G: float = None, B: float = None):
+    @register_setting('Material', 'Outline Color', 'outline_color', limits={'R': (0, 255), 'G': (0, 255), 'B': (0, 255)})
+    def set_outline_color(self, R: int = 0, G: int = 0, B: int = 0):
         if R is not None:
-            self.settings['outline_color'][0] = R
+            self.settings['outline_color'][0] = R/255
         if G is not None:
-            self.settings['outline_color'][1] = G
+            self.settings['outline_color'][1] = G/255
         if B is not None:
-            self.settings['outline_color'][2] = B
+            self.settings['outline_color'][2] = B/255
         self._reset_properties()
 
     def _reset_properties(self):
@@ -174,6 +203,3 @@ class Atom(shapes.EditableShape):
         self.outline_disk_actor.GetProperty().SetColor(self.settings['outline_color'])
         self.quadrant_disk1_actor.GetProperty().SetColor(self.settings['outline_color'])
         self.quadrant_disk2_actor.GetProperty().SetColor(self.settings['outline_color'])
-
-
-

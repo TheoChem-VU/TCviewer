@@ -1,5 +1,6 @@
 from typing import Any, Tuple, List, get_type_hints
 import inspect
+from math import floor, log10
 
 try:
     from PySide6 import QtWidgets, QtCore
@@ -192,7 +193,7 @@ _registered_settings = []
 
 
 class SettingWidget(QtWidgets.QFrame):
-    def __init__(self, objs, name, internal_variable, func, limits):
+    def __init__(self, objs, name, internal_variable, func, limits, defaults):
         super().__init__()
         self.setLayout(QtWidgets.QHBoxLayout())
         self.layout().addWidget(QtWidgets.QLabel(name))
@@ -200,7 +201,10 @@ class SettingWidget(QtWidgets.QFrame):
         self.func = func
         self.objs = objs
 
+        self.defaults = defaults
+
         annots = func.__annotations__
+        self.number_of_values = len(annots)
         # internal_values = [ for obj in objs]
         internal_values = []
         for obj in objs:
@@ -225,14 +229,27 @@ class SettingWidget(QtWidgets.QFrame):
         else:
             internal_values = [None] * len(internal_values[0])
 
+        # add the widgets that actually change the values
         self.value_getters = []
-        for val, (name, typ) in zip(internal_values, annots.items()):
+        self.value_setters = []
+        limits = limits or {}
+        for val, (name, typ), limit in zip(internal_values, annots.items(), limits.values()):
             if typ is float:
                 sb = QtWidgets.QDoubleSpinBox()
                 if val is not None:
                     sb.setValue(val)
+                sb.setSpecialValueText("Auto")
+                mi, ma = limit
+                if ma == float('inf'):
+                    ma = 1000
+                if mi == -float('inf'):
+                    mi = -1000
+                step = 10**(floor(log10(abs(val))))
+                sb.setSingleStep(step)
+                sb.setRange(mi-step/1000, ma)
                 self.layout().addWidget(sb)
                 self.value_getters.append(sb.value)
+                self.value_setters.append(sb.setValue)
                 sb.valueChanged.connect(self.apply_setting)
 
             if typ is bool:
@@ -241,13 +258,32 @@ class SettingWidget(QtWidgets.QFrame):
                     sb.setChecked(val)
                 self.layout().addWidget(sb)
                 self.value_getters.append(sb.isChecked)
+                self.value_setters.append(sb.setChecked)
                 sb.stateChanged.connect(self.apply_setting)
 
+        # add a reset button
+        reset_button = QtWidgets.QPushButton('⟲')
+        self.layout().addWidget(reset_button)
+        reset_button.clicked.connect(self.reset_value)
+        reset_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
 
     def get_value(self):
+        print([vg() for vg in self.value_getters])
         return [vg() for vg in self.value_getters]
 
-    def apply_setting(self):
+    def set_value(self, value):
+        if not isinstance(value, (list, tuple)):
+            value = [value]
+        return [vs(v) for v, vs in zip(value, self.value_setters)]
+
+    def reset_value(self):
+        self.set_value([None] * self.number_of_values)
+
+    def apply_value_to_one_obj(self, v, obj):
+        self.func(obj, *v)
+        obj.renderer.GetRenderWindow().Render()
+
+    def apply_setting(self, objs=None):
         v = self.get_value()
         renderers = set()
         for obj in self.objs:
@@ -275,12 +311,6 @@ class SettingsWidget(QtWidgets.QSplitter):
         item = QtWidgets.QListWidgetItem(str(obj))
         self.object_list.addItem(item)
         self.objects[str(item)] = obj
-        # cls = obj.__class__.__name__
-        # setts = [row for row in _registered_settings if row[-1] == cls]
-        # if cls == 'Atom':
-        #     setts[0][4](obj, random.random())
-        # else:
-        #     setts[0][4](obj, random.random()/10)
 
     def set_tabs(self):
         selected = self.object_list.selectedItems()
@@ -289,7 +319,13 @@ class SettingsWidget(QtWidgets.QSplitter):
         objs = []
         for sel in selected:
             obj = self.objects[str(sel)]
+            obj.enable_outline()
             objs.append(obj)
+
+        for obj in self.objects.values():
+            if obj in objs:
+                continue
+            obj.disable_outline()
 
         classes = set(obj.__class__.__name__ for obj in objs)
 
@@ -300,13 +336,13 @@ class SettingsWidget(QtWidgets.QSplitter):
             tabs = {}
 
             for sett in setts:
-                tab, variable, internal_variable, limits, func, _ = sett
+                tab, variable, internal_variable, limits, defaults, func, _ = sett
                 if tab not in tabs:
                     frame = QtWidgets.QFrame()
                     frame.setLayout(QtWidgets.QVBoxLayout())
                     tabs[tab] = frame
 
-                widg = SettingWidget(objs, variable, internal_variable, func, limits)
+                widg = SettingWidget(objs, variable, internal_variable, func, limits, defaults)
                 tabs[tab].layout().addWidget(widg)
 
         for tab_name, tab_frame in tabs.items():
@@ -314,10 +350,16 @@ class SettingsWidget(QtWidgets.QSplitter):
             tab_frame.layout().addStretch()
 
 
-def register_setting(category: str, variable_name: str, internal_name: str, limits: dict = None):
+def register_setting(category: str, variable_name: str, internal_name: str, limits: dict = None, defaults=None):
+    # print(category, variable_name, internal_name, limits, defaults)
     def inner_dec(func):
         cls = func.__qualname__.split('.')[-2]
-        _registered_settings.append((category, variable_name, internal_name, limits, func, cls))
+        if defaults is None:
+            signature = inspect.signature(func)
+            new_defaults = {k: v.default for k, v in signature.parameters.items() if v.default is not inspect._empty}
+        else:
+            new_defaults = defaults
+        _registered_settings.append((category, variable_name, internal_name, limits, new_defaults, func, cls))
         return func
     return inner_dec
 
