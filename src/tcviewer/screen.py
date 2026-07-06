@@ -8,7 +8,6 @@ except ImportError:
 
 class Screen:
     def __new__(cls, headless=False, existing_app=None):
-        print('In Screen', headless)
         if headless or not has_qt:
             return _HeadlessScreen()
         else:
