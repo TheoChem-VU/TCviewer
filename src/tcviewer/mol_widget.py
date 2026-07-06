@@ -666,6 +666,8 @@ if has_qt:
                 return
 
             actor = self.picker.GetViewProp()
+            if not hasattr(actor, 'type'):
+                return
 
             # lets toggle the selected actor
             self.toggle_highlight(actor)
@@ -916,6 +918,7 @@ if has_qt:
                 for actor in actors:
                     if not hasattr(actor, 'type'):
                         continue
+
                     if not any(actor.type.startswith(typ) for typ in ['bond', 'intbond']):
                         continue
 
