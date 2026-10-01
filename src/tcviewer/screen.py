@@ -1,6 +1,6 @@
 from tcviewer import mol_widget, settings
 try:
-    from PySide6 import QtWidgets, QtCore
+    from PySide6 import QtWidgets, QtCore, QtGui
     has_qt = True
 except ImportError:
     has_qt = False
@@ -8,7 +8,6 @@ except ImportError:
 
 class Screen:
     def __new__(cls, headless=False, existing_app=None):
-        print('In Screen', headless)
         if headless or not has_qt:
             return _HeadlessScreen()
         else:
@@ -43,6 +42,27 @@ class _HeadlessScreen:
 
 
 if has_qt:
+    class ScreenKeyPressFilter(QtCore.QObject):
+        def __init__(self, parent):
+            super().__init__(parent=parent)
+            self.callbacks = {}
+            self.parent = parent
+
+        def add_shortcut(self, key, callback):
+            self.callbacks.setdefault(key, [])
+            self.callbacks[key].append(callback)
+
+        def eventFilter(self, widget, event):
+            if event.type() == QtCore.QEvent.KeyPress:
+                callbacks = self.callbacks.get(event.key(), None)
+                if callbacks is not None:
+                    for cb in callbacks:
+                        cb(self.parent)
+                    return True
+
+            return super().eventFilter(widget, event)
+
+
     class _Screen(QtWidgets.QApplication):
         def __post_init__(self):
             self.use_parallel_projection = True
@@ -80,6 +100,9 @@ if has_qt:
             self.window.layout.setColumnStretch(1, 1)
             self.window.layout.setColumnStretch(2, 0)
 
+            self.event_filter = ScreenKeyPressFilter(parent=self)
+            self.installEventFilter(self.event_filter)
+
         def __enter__(self):
             self.__post_init__()
             return self
@@ -100,6 +123,11 @@ if has_qt:
 
         def screenshots(self, *args, **kwargs):
             self.molview.screenshots(*args, **kwargs)
+
+        def add_shortcut(self, key, callback):
+            self.event_filter.add_shortcut(key, callback)
+
+
 
     class _ScreenWindow(QtWidgets.QMainWindow):
         def __init__(self):
